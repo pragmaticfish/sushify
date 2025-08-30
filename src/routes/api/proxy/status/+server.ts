@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import { nanoid } from 'nanoid';
 import type { RequestEvent } from './$types';
 import type {
 	CaptureStatusResponse,
@@ -10,7 +11,7 @@ import type {
 // Simple in-memory store for capture state
 // Later we'll use a proper database or shared state management
 // Start with capture enabled by default for better UX
-const initialSessionId = `session-${new Date().toISOString().slice(0, 16).replace('T', '-')}`;
+const initialSessionId = `session-${nanoid(10)}`;
 let captureState: CaptureStatusResponse = {
 	capturing: true,
 	sessionId: initialSessionId,
@@ -33,7 +34,7 @@ export async function POST({ request }: RequestEvent) {
 		const body: CaptureToggleRequest = await request.json();
 
 		if (body.action === 'enable') {
-			const sessionId = `session-${new Date().toISOString().slice(0, 16).replace('T', '-')}`;
+			const sessionId = `session-${nanoid(10)}`;
 			captureState = {
 				capturing: true,
 				sessionId,

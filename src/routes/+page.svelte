@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
+	import { source } from 'sveltekit-sse';
 	import type { Exchange, CaptureStatusResponse, ExchangesResponse } from '$lib/types';
 
 	let capturing = false;
@@ -8,21 +9,50 @@
 	let exchanges: Exchange[] = [];
 	let loading = false;
 
-	// Check capture status on page load
+	// SSE connection
+	let sseConnection: ReturnType<typeof source> | null = null;
+
+	// Check capture status and setup SSE on page load
 	onMount(() => {
 		checkCaptureStatus();
-		loadExchanges();
-
-		// Poll for new exchanges every 2 seconds
-		const interval = setInterval(async () => {
-			if (capturing) {
-				await loadExchanges();
-			}
-		}, 2000);
-
-		// Cleanup interval on component destroy
-		return () => clearInterval(interval);
+		loadInitialExchanges();
+		setupSSE();
 	});
+
+	// Cleanup SSE connection on destroy
+	onDestroy(() => {
+		if (sseConnection) {
+			sseConnection.close();
+		}
+	});
+
+	function setupSSE() {
+		// Create SSE connection
+		sseConnection = source('/api/proxy/stream');
+
+		// Listen for new exchanges
+		const exchangeStream = sseConnection.select('exchange');
+
+		exchangeStream.subscribe((data) => {
+			if (data) {
+				try {
+					const newExchange: Exchange = JSON.parse(data);
+					// Add new exchange to the beginning of the array
+					exchanges = [newExchange, ...exchanges];
+				} catch (err) {
+					console.error('Failed to parse exchange data:', err);
+				}
+			}
+		});
+
+		// Listen for connection events
+		const connectionStream = sseConnection.select('connected');
+		connectionStream.subscribe((data) => {
+			if (data) {
+				console.log('📡 SSE connected:', data);
+			}
+		});
+	}
 
 	async function checkCaptureStatus() {
 		try {
@@ -71,7 +101,7 @@
 		}
 	}
 
-	async function loadExchanges() {
+	async function loadInitialExchanges() {
 		if (loading) return;
 
 		try {

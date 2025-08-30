@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestEvent } from './$types';
 import type { Exchange } from '$lib/types';
+import { broadcastExchange } from '$lib/sse-manager';
 
 // Simple in-memory store for captured exchanges
 // Later we'll use SQLite database as planned
@@ -38,7 +39,9 @@ export async function POST({ request }: RequestEvent) {
 			`📡 Received exchange: ${exchange.method} ${exchange.url} -> ${exchange.response_status}`
 		);
 
-		// TODO: Later we'll broadcast this via SSE for real-time UI updates
+		// Broadcast to all connected SSE clients
+		broadcastExchange(exchange);
+
 		// TODO: Later we'll trigger LLM analysis here
 
 		return json({

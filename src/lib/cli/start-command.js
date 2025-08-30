@@ -9,6 +9,7 @@ import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { platform } from 'os';
+import { existsSync } from 'fs';
 import fetch from 'node-fetch';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -96,100 +97,117 @@ function startDashboard() {
 	return new Promise((resolve, reject) => {
 		console.log('🎛️  Starting Sushify dashboard...');
 
-		// Build the dashboard first
-		const build = spawn('npm', ['run', 'build'], {
-			cwd: join(__dirname, '../../../'),
-			stdio: 'pipe'
-		});
+		const projectRoot = join(__dirname, '../../../');
+		const buildDir = join(projectRoot, 'build');
 
-		let buildOutput = '';
-		build.stdout.on('data', (data) => {
-			buildOutput += data.toString();
-		});
+		// Check if build directory exists (for installed packages)
+		if (existsSync(buildDir)) {
+			console.log('✅ Using pre-built dashboard');
+			startPreviewServer(resolve, reject, projectRoot);
+		} else {
+			// Development mode - build first
+			console.log('🔨 Building dashboard (development mode)...');
+			const build = spawn('npm', ['run', 'build'], {
+				cwd: projectRoot,
+				stdio: 'pipe'
+			});
 
-		build.stderr.on('data', (data) => {
-			const error = data.toString();
-			if (error.includes('You are using Node.js')) {
-				console.log('Dashboard build error:', error.trim());
-				reject(new Error('Node.js version incompatible with Vite - please run "nvm use" first'));
-				return;
-			}
-			buildOutput += error;
-		});
+			let buildOutput = '';
+			build.stdout.on('data', (data) => {
+				buildOutput += data.toString();
+			});
 
-		build.on('close', (code) => {
-			if (code === 0) {
-				console.log('✅ Dashboard built successfully');
+			build.stderr.on('data', (data) => {
+				const error = data.toString();
+				if (error.includes('You are using Node.js')) {
+					console.log('Dashboard build error:', error.trim());
+					reject(new Error('Node.js version incompatible with Vite - please run "nvm use" first'));
+					return;
+				}
+				buildOutput += error;
+			});
 
-				// Start preview server
-				const preview = spawn('npm', ['run', 'preview', '--', '--port', '3001'], {
-					cwd: join(__dirname, '../../../'),
-					stdio: 'pipe'
-				});
+			build.on('close', (code) => {
+				if (code === 0) {
+					console.log('✅ Dashboard built successfully');
+					startPreviewServer(resolve, reject, projectRoot);
+				} else {
+					console.log('❌ Dashboard build failed');
+					console.log(buildOutput);
+					reject(new Error(`Dashboard build failed with code ${code}`));
+				}
+			});
 
-				let dashboardReady = false;
-				let startupOutput = '';
-
-				const checkForReady = (/** @type {string} */ output) => {
-					startupOutput += output;
-					// Look for vite preview server startup indicators
-					if (
-						(output.includes('Local:') ||
-							output.includes('Network:') ||
-							output.includes('localhost:3001') ||
-							output.includes('preview') ||
-							output.includes('3001')) &&
-						!dashboardReady
-					) {
-						dashboardReady = true;
-						console.log('✅ Dashboard running at: http://localhost:3001');
-						processes.dashboard = preview;
-						resolve(preview);
-					}
-				};
-
-				preview.stdout.on('data', (data) => {
-					const output = data.toString();
-					checkForReady(output);
-				});
-
-				preview.stderr.on('data', (data) => {
-					const output = data.toString();
-					startupOutput += output;
-					// Some servers output startup info to stderr
-					checkForReady(output);
-				});
-
-				preview.on('close', (code) => {
-					if (!dashboardReady) {
-						console.log('Dashboard startup output:', startupOutput);
-						reject(new Error(`Dashboard exited with code ${code}`));
-					}
-				});
-
-				preview.on('error', (error) => {
-					reject(new Error(`Dashboard startup error: ${error.message}`));
-				});
-
-				// Timeout after 30 seconds
-				setTimeout(() => {
-					if (!dashboardReady) {
-						preview.kill();
-						console.log('Dashboard startup output:', startupOutput);
-						reject(new Error('Dashboard startup timeout'));
-					}
-				}, 30000);
-			} else {
-				console.log('❌ Dashboard build failed');
-				console.log(buildOutput);
-				reject(new Error(`Dashboard build failed with code ${code}`));
-			}
-		});
-
-		build.on('error', (error) => {
-			reject(new Error(`Dashboard build error: ${error.message}`));
-		});
+			build.on('error', (error) => {
+				reject(new Error(`Dashboard build error: ${error.message}`));
+			});
+		}
 	});
+}
+
+function startPreviewServer(
+	/** @type {(value: import('child_process').ChildProcess) => void} */ resolve,
+	/** @type {(reason: Error) => void} */ reject,
+	/** @type {string} */ projectRoot
+) {
+	// Start preview server
+	const preview = spawn('npm', ['run', 'preview', '--', '--port', '3001'], {
+		cwd: projectRoot,
+		stdio: 'pipe'
+	});
+
+	let dashboardReady = false;
+	let startupOutput = '';
+
+	const checkForReady = (/** @type {string} */ output) => {
+		startupOutput += output;
+		// Look for vite preview server startup indicators
+		if (
+			(output.includes('Local:') ||
+				output.includes('Network:') ||
+				output.includes('localhost:3001') ||
+				output.includes('preview') ||
+				output.includes('3001')) &&
+			!dashboardReady
+		) {
+			dashboardReady = true;
+			console.log('✅ Dashboard running at: http://localhost:3001');
+			processes.dashboard = preview;
+			resolve(preview);
+		}
+	};
+
+	preview.stdout.on('data', (data) => {
+		const output = data.toString();
+		checkForReady(output);
+	});
+
+	preview.stderr.on('data', (data) => {
+		const output = data.toString();
+		startupOutput += output;
+		// Some servers output startup info to stderr
+		checkForReady(output);
+	});
+
+	preview.on('close', (code) => {
+		if (!dashboardReady) {
+			console.log('Dashboard startup output:', startupOutput);
+			reject(new Error(`Dashboard exited with code ${code}`));
+		}
+	});
+
+	preview.on('error', (error) => {
+		reject(new Error(`Dashboard startup error: ${error.message}`));
+	});
+
+	// Timeout after 30 seconds
+	setTimeout(() => {
+		if (!dashboardReady) {
+			preview.kill();
+			console.log('Dashboard startup output:', startupOutput);
+			reject(new Error('Dashboard startup timeout'));
+		}
+	}, 30000);
 }
 
 /**
@@ -296,10 +314,10 @@ function startUserApp(command) {
 
 		userApp.on('close', (/** @type {number | null} */ code) => {
 			console.log(`\n📋 User application exited with code ${code}`);
-			console.log('⏳ Waiting 5 seconds for dashboard to display final exchanges...');
+			console.log('⏳ Waiting 2 seconds to ensure all exchanges are captured...');
 			setTimeout(() => {
 				cleanup();
-			}, 5000);
+			}, 2000);
 		});
 	});
 }
