@@ -9,7 +9,8 @@ import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { platform } from 'os';
-import { existsSync } from 'fs';
+import { existsSync, writeFileSync, unlinkSync } from 'fs';
+import { execSync } from 'child_process';
 import fetch from 'node-fetch';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -90,7 +91,7 @@ async function checkDependencies() {
 }
 
 /**
- * Start the SvelteKit dashboard in preview mode
+ * Start the SvelteKit dashboard in production mode
  * @returns {Promise<import('child_process').ChildProcess>}
  */
 function startDashboard() {
@@ -103,7 +104,7 @@ function startDashboard() {
 		// Check if build directory exists (for installed packages)
 		if (existsSync(buildDir)) {
 			console.log('✅ Using pre-built dashboard');
-			startPreviewServer(resolve, reject, projectRoot);
+			startProductionServer(resolve, reject, projectRoot);
 		} else {
 			// Development mode - build first
 			console.log('🔨 Building dashboard (development mode)...');
@@ -130,7 +131,7 @@ function startDashboard() {
 			build.on('close', (code) => {
 				if (code === 0) {
 					console.log('✅ Dashboard built successfully');
-					startPreviewServer(resolve, reject, projectRoot);
+					startProductionServer(resolve, reject, projectRoot);
 				} else {
 					console.log('❌ Dashboard build failed');
 					console.log(buildOutput);
@@ -145,15 +146,22 @@ function startDashboard() {
 	});
 }
 
-function startPreviewServer(
+function startProductionServer(
 	/** @type {(value: import('child_process').ChildProcess) => void} */ resolve,
 	/** @type {(reason: Error) => void} */ reject,
 	/** @type {string} */ projectRoot
 ) {
-	// Start preview server
-	const preview = spawn('npm', ['run', 'preview', '--', '--port', '3001'], {
+	// Start production server using adapter-node
+	const server = spawn('node', ['build'], {
 		cwd: projectRoot,
-		stdio: 'pipe'
+		stdio: 'pipe',
+		env: {
+			...process.env,
+			PORT: '3001',
+			HOST: '0.0.0.0',
+			ORIGIN: 'http://localhost:3001',
+			NODE_ENV: 'production'
+		}
 	});
 
 	let dashboardReady = false;
@@ -161,49 +169,48 @@ function startPreviewServer(
 
 	const checkForReady = (/** @type {string} */ output) => {
 		startupOutput += output;
-		// Look for vite preview server startup indicators
+		// Look for SvelteKit adapter-node server startup indicators
 		if (
-			(output.includes('Local:') ||
-				output.includes('Network:') ||
-				output.includes('localhost:3001') ||
-				output.includes('preview') ||
-				output.includes('3001')) &&
+			(output.includes('Listening on') ||
+				output.includes('Server listening') ||
+				output.includes('3001') ||
+				output.includes('0.0.0.0:3001')) &&
 			!dashboardReady
 		) {
 			dashboardReady = true;
 			console.log('✅ Dashboard running at: http://localhost:3001');
-			processes.dashboard = preview;
-			resolve(preview);
+			processes.dashboard = server;
+			resolve(server);
 		}
 	};
 
-	preview.stdout.on('data', (data) => {
+	server.stdout.on('data', (data) => {
 		const output = data.toString();
 		checkForReady(output);
 	});
 
-	preview.stderr.on('data', (data) => {
+	server.stderr.on('data', (data) => {
 		const output = data.toString();
 		startupOutput += output;
 		// Some servers output startup info to stderr
 		checkForReady(output);
 	});
 
-	preview.on('close', (code) => {
+	server.on('close', (code) => {
 		if (!dashboardReady) {
 			console.log('Dashboard startup output:', startupOutput);
 			reject(new Error(`Dashboard exited with code ${code}`));
 		}
 	});
 
-	preview.on('error', (error) => {
+	server.on('error', (error) => {
 		reject(new Error(`Dashboard startup error: ${error.message}`));
 	});
 
 	// Timeout after 30 seconds
 	setTimeout(() => {
 		if (!dashboardReady) {
-			preview.kill();
+			server.kill();
 			console.log('Dashboard startup output:', startupOutput);
 			reject(new Error('Dashboard startup timeout'));
 		}
@@ -269,56 +276,274 @@ function startProxy() {
 /**
  * Start user application with proxy configuration
  * @param {string} command - The command to run
+ * @param {boolean} dockerMode - Force Docker Compose mode
+ * @param {string[]} dockerServices - Services to auto-configure for proxy
  * @returns {Promise<import('child_process').ChildProcess>}
  */
-function startUserApp(command) {
+function startUserApp(command, dockerMode = false, dockerServices = []) {
 	return new Promise((resolve, reject) => {
 		console.log(`🚀 Starting user application: ${command}`);
 
-		// Parse command (handle quoted arguments)
-		const args = command.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
-		const cmd = args[0];
-		const cmdArgs = args.slice(1).map((arg) => arg.replace(/^"|"$/g, ''));
+		if (dockerMode) {
+			console.log('🐳 Docker Compose mode - configuring container proxy setup...');
+			console.log(`🔍 Auto-configuring service: ${dockerServices[0]} (for LLM calls)`);
+			return startDockerComposeApp(command, resolve, reject, dockerServices);
+		} else {
+			console.log('💻 Local mode - configuring direct proxy setup...');
+			return startLocalApp(command, resolve, reject);
+		}
+	});
+}
 
-		if (!cmd) {
-			reject(new Error('Invalid command provided'));
-			return;
+/**
+ * Start local application with proxy environment variables
+ * @param {string} command - The command to run
+ * @param {Function} resolve - Promise resolver
+ * @param {Function} reject - Promise rejector
+ */
+function startLocalApp(command, resolve, reject) {
+	// Parse command (handle quoted arguments)
+	const args = command.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+	const cmd = args[0];
+	const cmdArgs = args.slice(1).map((arg) => arg.replace(/^"|"$/g, ''));
+
+	if (!cmd) {
+		reject(new Error('Invalid command provided'));
+		return;
+	}
+
+	// Set up environment with proxy configuration
+	const env = {
+		...process.env,
+		HTTP_PROXY: 'http://localhost:8080',
+		HTTPS_PROXY: 'http://localhost:8080',
+		// Set certificate paths for different tools
+		SSL_CERT_FILE: `${process.env.HOME}/.mitmproxy/mitmproxy-ca-cert.pem`,
+		REQUESTS_CA_BUNDLE: `${process.env.HOME}/.mitmproxy/mitmproxy-ca-cert.pem`,
+		CURL_CA_BUNDLE: `${process.env.HOME}/.mitmproxy/mitmproxy-ca-cert.pem`
+	};
+
+	const userApp = spawn(cmd, cmdArgs, {
+		stdio: 'inherit',
+		env: env,
+		shell: false
+	});
+
+	userApp.on('spawn', () => {
+		console.log('✅ User application started with proxy configuration');
+		processes.userApp = userApp;
+		resolve(userApp);
+	});
+
+	userApp.on('error', (/** @type {Error} */ error) => {
+		reject(new Error(`Failed to start user application: ${error.message}`));
+	});
+
+	userApp.on('close', (/** @type {number | null} */ code) => {
+		console.log(`\n📋 User application exited with code ${code}`);
+		console.log('⏳ Waiting 2 seconds to ensure all exchanges are captured...');
+		setTimeout(() => {
+			cleanup();
+		}, 2000);
+	});
+
+	// Monitor for potential Docker misconfiguration
+	setTimeout(() => {
+		checkForDockerMisconfiguration();
+	}, 5000); // Check after 5 seconds
+}
+
+/**
+ * Check for potential Docker misconfiguration in local mode
+ */
+async function checkForDockerMisconfiguration() {
+	try {
+		// Check if we have any exchanges captured yet
+		const response = await fetch('http://localhost:3001/api/proxy/exchanges');
+		const data = /** @type {{ total?: number }} */ (await response.json());
+
+		// If no exchanges captured and compose files exist, suggest --docker flag
+		if (data.total === 0 && hasDockerComposeFiles()) {
+			console.log('');
+			console.log('💡 Helpful hint:');
+			console.log('   No network traffic captured yet, but docker-compose.yml was found.');
+			console.log('   If your app runs in Docker containers, try:');
+			console.log(`   sushify start --docker "${process.argv.slice(3).join(' ')}"`);
+			console.log('');
+		}
+	} catch {
+		// Ignore errors in this check - it's just a helpful hint
+	}
+}
+
+/**
+ * Check if Docker Compose files exist in current directory
+ * @returns {boolean}
+ */
+function hasDockerComposeFiles() {
+	const composeFiles = ['docker-compose.yml', 'docker-compose.yaml', 'compose.yml', 'compose.yaml'];
+	return composeFiles.some((file) => existsSync(file));
+}
+
+/**
+ * Check if Docker Compose is available and compose files exist
+ * @returns {boolean}
+ */
+function validateDockerSetup() {
+	// Check if docker-compose command exists
+	try {
+		execSync('docker-compose --version', { stdio: 'ignore' });
+	} catch {
+		try {
+			execSync('docker compose version', { stdio: 'ignore' });
+		} catch {
+			return false;
+		}
+	}
+
+	// Check if compose files exist
+	return hasDockerComposeFiles();
+}
+
+/**
+ * Start Docker Compose application with proxy configuration
+ * @param {string} command - The command to run
+ * @param {Function} resolve - Promise resolver
+ * @param {Function} reject - Promise rejector
+ * @param {string[]} autoConfigServices - Services to auto-configure for proxy
+ */
+function startDockerComposeApp(command, resolve, reject, autoConfigServices = []) {
+	// Validate Docker setup first
+	if (!validateDockerSetup()) {
+		console.error('');
+		console.error('❌ Docker Compose validation failed');
+		console.error('');
+		console.error('🔍 The --docker flag was used, but:');
+		console.error('  • No docker-compose command found, OR');
+		console.error('  • No compose files (docker-compose.yml) found in current directory');
+		console.error('');
+		console.error('💡 Solutions:');
+		console.error('  1. Remove --docker flag: sushify start "' + command + '"');
+		console.error('  2. Install Docker Compose: https://docs.docker.com/compose/install/');
+		console.error('  3. Add docker-compose.yml to your project');
+		console.error('');
+		reject(new Error('Docker Compose validation failed'));
+		return;
+	}
+
+	// Generate proxy override compose file
+	let proxyOverride = `
+# Auto-generated by Sushify - DO NOT EDIT
+# This file configures your containers to use Sushify proxy
+version: '3.8'
+
+services:
+  # Add Sushify proxy as a service
+  sushify-proxy-bridge:
+    image: alpine/socat:latest
+    command: tcp-listen:8080,fork,reuseaddr tcp-connect:host.docker.internal:8080
+    ports:
+      - "8080"
+    networks:
+      - default
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+`;
+
+	// Add auto-configured service
+	const serviceName = autoConfigServices[0];
+	proxyOverride += `
+  # Auto-configured service for LLM calls
+  ${serviceName}:
+    environment:
+      # Proxy configuration
+      HTTP_PROXY: http://sushify-proxy-bridge:8080
+      HTTPS_PROXY: http://sushify-proxy-bridge:8080
+      # Certificate configuration for different languages/tools
+      SSL_CERT_FILE: /tmp/sushify-ca.pem                    # Generic SSL cert
+      REQUESTS_CA_BUNDLE: /tmp/sushify-ca.pem              # Python requests
+      CURL_CA_BUNDLE: /tmp/sushify-ca.pem                  # curl
+      NODE_EXTRA_CA_CERTS: /tmp/sushify-ca.pem             # Node.js
+      SSL_CERT_DIR: /tmp/sushify-certs                     # Some tools expect a directory
+      PYTHONHTTPSVERIFY: "1"                               # Python HTTPS verification
+    volumes:
+      - ${process.env.HOME}/.mitmproxy/mitmproxy-ca-cert.pem:/tmp/sushify-ca.pem:ro
+      - ${process.env.HOME}/.mitmproxy/mitmproxy-ca-cert.pem:/tmp/sushify-certs/ca-cert.pem:ro
+    depends_on:
+      - sushify-proxy-bridge
+`;
+
+	// Write the override file
+	writeFileSync('docker-compose.sushify.yml', proxyOverride);
+	console.log('📄 Generated docker-compose.sushify.yml with proxy configuration');
+
+	// Parse the original command and modify it
+	let dockerCommand = command;
+
+	// Add our override file to the docker-compose command
+	if (dockerCommand.includes('docker-compose') || dockerCommand.includes('docker compose')) {
+		// Insert our override file before any existing -f files, but put the original compose file after it
+		const fileFlags = dockerCommand.includes(' -f ')
+			? ' -f docker-compose.sushify.yml'
+			: ' -f docker-compose.sushify.yml -f docker-compose.yml';
+		dockerCommand = dockerCommand.replace(
+			/(docker-compose|docker\s+compose)(\s+)/,
+			`$1$2${fileFlags} `
+		);
+	}
+
+	// Add profile to start the bridge service
+	// Note: Temporarily disabled due to Docker Compose version compatibility
+	// if (!dockerCommand.includes('--profile')) {
+	//     dockerCommand += ' --profile sushify';
+	// }
+
+	console.log(`🐳 Running: ${dockerCommand}`);
+	console.log(`✅ Service '${autoConfigServices[0]}' auto-configured for LLM proxy`);
+
+	// Parse and execute the modified command
+	const args = dockerCommand.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+	const cmd = args[0];
+	const cmdArgs = args.slice(1).map((arg) => arg.replace(/^"|"$/g, ''));
+
+	if (!cmd) {
+		reject(new Error('Invalid Docker Compose command provided'));
+		return;
+	}
+
+	/** @type {import('child_process').ChildProcess} */
+	const userApp = spawn(cmd, cmdArgs, {
+		stdio: 'inherit',
+		shell: false
+	});
+
+	userApp.on('spawn', () => {
+		console.log('✅ Docker Compose started with Sushify proxy bridge');
+		processes.userApp = userApp;
+		resolve(userApp);
+	});
+
+	userApp.on('error', (/** @type {Error} */ error) => {
+		reject(new Error(`Failed to start Docker Compose: ${error.message}`));
+	});
+
+	userApp.on('close', (/** @type {number | null} */ code) => {
+		console.log(`\n📋 Docker Compose exited with code ${code}`);
+		console.log('🧹 Cleaning up generated files...');
+
+		// Clean up generated override file
+		try {
+			unlinkSync('docker-compose.sushify.yml');
+			console.log('✅ Removed docker-compose.sushify.yml');
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.log('⚠️  Could not remove docker-compose.sushify.yml:', message);
 		}
 
-		// Set up environment with proxy configuration
-		const env = {
-			...process.env,
-			HTTP_PROXY: 'http://localhost:8080',
-			HTTPS_PROXY: 'http://localhost:8080',
-			// Set certificate paths for different tools
-			SSL_CERT_FILE: `${process.env.HOME}/.mitmproxy/mitmproxy-ca-cert.pem`,
-			REQUESTS_CA_BUNDLE: `${process.env.HOME}/.mitmproxy/mitmproxy-ca-cert.pem`,
-			CURL_CA_BUNDLE: `${process.env.HOME}/.mitmproxy/mitmproxy-ca-cert.pem`
-		};
-
-		const userApp = spawn(cmd, cmdArgs, {
-			stdio: 'inherit',
-			env: env,
-			shell: false
-		});
-
-		userApp.on('spawn', () => {
-			console.log('✅ User application started with proxy configuration');
-			processes.userApp = userApp;
-			resolve(userApp);
-		});
-
-		userApp.on('error', (/** @type {Error} */ error) => {
-			reject(new Error(`Failed to start user application: ${error.message}`));
-		});
-
-		userApp.on('close', (/** @type {number | null} */ code) => {
-			console.log(`\n📋 User application exited with code ${code}`);
-			console.log('⏳ Waiting 2 seconds to ensure all exchanges are captured...');
-			setTimeout(() => {
-				cleanup();
-			}, 2000);
-		});
+		console.log('⏳ Waiting 2 seconds to ensure all exchanges are captured...');
+		setTimeout(() => {
+			cleanup();
+		}, 2000);
 	});
 }
 
@@ -388,8 +613,10 @@ function openDashboard() {
 /**
  * Main start function
  * @param {string} userCommand - The user's application command to start with proxy
+ * @param {boolean} dockerMode - Force Docker Compose mode
+ * @param {string[]} dockerServices - Services to auto-configure for proxy
  */
-export default async function startSushify(userCommand) {
+export default async function startSushify(userCommand, dockerMode = false, dockerServices = []) {
 	console.log('🍣 Sushify - Turn your prompt salad into sushi');
 	console.log('');
 
@@ -434,7 +661,7 @@ export default async function startSushify(userCommand) {
 		console.log('');
 
 		// 5. Start user application (now that everything is ready)
-		await startUserApp(userCommand);
+		await startUserApp(userCommand, dockerMode, dockerServices);
 
 		// 6. Open browser
 		openDashboard();
