@@ -25,3 +25,8 @@ vite.config.ts.timestamp-*
 
 # Local temporary files
 .local-files
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class

@@ -1,0 +1,20 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+## Terminal
+- Remember to run `nvm use` in your terminal to avoid node version errors
+
+## Test and temporary files
+- Place temporary files such as ad hoc tests under .local-files whenever possible. Make a subfolder for them when needed (e.g. scripts). This folder is git ignored.
+
+## Typescript
+- Never use explicit or implicit 'any'.
+- Prefer types over interfaces.
+- Don't create duplicate type definitions. Instead create in a proper, shared file (e.g types.ts).
+
+## General
+- Check for typescript/lint/svelte errors when you've completed a change and fix all of them.
+- Review all the changes you made with fresh eyes before returning to the user.
+- If unsure about why something in the system is the way it is, consult with the user before deleting or drastically altering it
