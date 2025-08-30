@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # Frontend service (no network calls)
+  frontend:
+    image: nginx:alpine
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+
+  # Backend service (makes LLM/API calls) - this is what we'll proxy
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - database
+
+  # Database service (no outbound network calls)
+  database:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: testapp
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

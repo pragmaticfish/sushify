@@ -17,6 +17,9 @@ export default ts.config(
 	prettier,
 	...svelte.configs.prettier,
 	{
+		ignores: ['test-apps/**/*'] // Exclude test applications from linting
+	},
+	{
 		languageOptions: {
 			globals: { ...globals.browser, ...globals.node }
 		},

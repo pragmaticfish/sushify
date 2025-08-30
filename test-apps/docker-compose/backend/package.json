@@ -1,0 +1,14 @@
+{
+	"name": "test-backend",
+	"version": "1.0.0",
+	"description": "Test backend service for Sushify Docker proxy testing",
+	"main": "server.js",
+	"scripts": {
+		"start": "node server.js"
+	},
+	"dependencies": {
+		"express": "^4.18.2",
+		"node-fetch": "^2.6.7",
+		"https-proxy-agent": "^5.0.1"
+	}
+}

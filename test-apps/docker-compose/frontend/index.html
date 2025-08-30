@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Test Docker App - Sushify Testing</title>
+		<style>
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+				max-width: 800px;
+				margin: 0 auto;
+				padding: 20px;
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				color: white;
+				min-height: 100vh;
+			}
+			.container {
+				background: rgba(255, 255, 255, 0.1);
+				padding: 30px;
+				border-radius: 15px;
+				backdrop-filter: blur(10px);
+			}
+			h1 {
+				color: #ffd700;
+				margin-bottom: 30px;
+			}
+			.endpoint {
+				background: rgba(255, 255, 255, 0.15);
+				padding: 15px;
+				margin: 15px 0;
+				border-radius: 8px;
+				border-left: 4px solid #ffd700;
+			}
+			.endpoint h3 {
+				margin-top: 0;
+				color: #ffd700;
+			}
+			button {
+				background: #ffd700;
+				color: #333;
+				border: none;
+				padding: 10px 20px;
+				border-radius: 5px;
+				cursor: pointer;
+				font-weight: bold;
+				margin-right: 10px;
+			}
+			button:hover {
+				background: #ffed4e;
+			}
+			.response {
+				background: rgba(0, 0, 0, 0.3);
+				padding: 15px;
+				margin: 10px 0;
+				border-radius: 5px;
+				font-family: monospace;
+				font-size: 14px;
+				white-space: pre-wrap;
+				word-break: break-all;
+			}
+			.status {
+				font-size: 24px;
+				margin: 20px 0;
+				text-align: center;
+			}
+			.note {
+				background: rgba(255, 255, 255, 0.1);
+				padding: 15px;
+				border-radius: 8px;
+				margin: 20px 0;
+				border-left: 4px solid #4caf50;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<h1>🐳 Test Docker App for Sushify</h1>
+
+			<div class="note">
+				<strong>🎯 Purpose:</strong> This app tests Sushify's Docker Compose proxy wrapping.<br />
+				<strong>🔍 Expected:</strong> Backend service makes HTTPS calls that get captured by Sushify
+				dashboard.
+			</div>
+
+			<div class="status" id="backendStatus">⏳ Checking backend connection...</div>
+
+			<div class="endpoint">
+				<h3>🏥 Health Check</h3>
+				<p>Check if the backend service is running</p>
+				<button onclick="healthCheck()">Check Health</button>
+				<div id="healthResponse" class="response" style="display: none"></div>
+			</div>
+
+			<div class="endpoint">
+				<h3>🧪 API Test</h3>
+				<p>
+					Trigger backend to make 3 external HTTPS calls (these should appear in Sushify dashboard)
+				</p>
+				<button onclick="apiTest()">Run API Test</button>
+				<div id="apiResponse" class="response" style="display: none"></div>
+			</div>
+
+			<div class="endpoint">
+				<h3>🔄 Continuous Test</h3>
+				<p>Start continuous testing (5 calls every 3 seconds)</p>
+				<button onclick="continuousTest()">Start Continuous Test</button>
+				<div id="continuousResponse" class="response" style="display: none"></div>
+			</div>
+
+			<div class="note">
+				<strong>📊 Sushify Dashboard:</strong>
+				<a href="http://localhost:3001" target="_blank" style="color: #ffd700"
+					>http://localhost:3001</a
+				><br />
+				<strong>👀 Expected:</strong> When you run API tests, you should see the HTTPS calls appear
+				in real-time on the Sushify dashboard.
+			</div>
+		</div>
+
+		<script>
+			const BACKEND_URL = 'http://localhost:8000';
+
+			// Check backend status on page load
+			window.onload = function () {
+				healthCheck(true);
+			};
+
+			async function makeRequest(endpoint, elementId) {
+				const responseDiv = document.getElementById(elementId);
+				responseDiv.style.display = 'block';
+				responseDiv.textContent = '⏳ Loading...';
+
+				try {
+					const response = await fetch(BACKEND_URL + endpoint);
+					const data = await response.json();
+					responseDiv.textContent = JSON.stringify(data, null, 2);
+					return data;
+				} catch (error) {
+					responseDiv.textContent = '❌ Error: ' + error.message;
+					throw error;
+				}
+			}
+
+			async function healthCheck(isStartup = false) {
+				try {
+					const data = await makeRequest('/health', 'healthResponse');
+					if (isStartup) {
+						document.getElementById('backendStatus').innerHTML = '✅ Backend is running';
+					}
+				} catch (error) {
+					if (isStartup) {
+						document.getElementById('backendStatus').innerHTML = '❌ Backend connection failed';
+					}
+				}
+			}
+
+			function apiTest() {
+				makeRequest('/api/test', 'apiResponse');
+			}
+
+			function continuousTest() {
+				makeRequest('/api/continuous', 'continuousResponse');
+			}
+		</script>
+	</body>
+</html>

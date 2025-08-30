@@ -557,9 +557,10 @@ async function waitForDashboardReady() {
 	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
 		try {
 			// Test the main API endpoints that the interceptor uses
+			// Use IPv4 explicitly to avoid IPv6 connectivity issues
 			const [statusResponse, exchangesResponse] = await Promise.all([
-				fetch('http://localhost:3001/api/proxy/status'),
-				fetch('http://localhost:3001/api/proxy/exchanges')
+				fetch('http://127.0.0.1:3001/api/proxy/status'),
+				fetch('http://127.0.0.1:3001/api/proxy/exchanges')
 			]);
 
 			if (statusResponse.ok && exchangesResponse.ok) {
