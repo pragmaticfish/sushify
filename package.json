@@ -37,7 +37,6 @@
 		"bin/",
 		"build/",
 		"scripts/",
-		"src/lib/proxy/",
 		"README.md",
 		"LICENSE"
 	],
@@ -60,7 +59,9 @@
 		"lint:fix": "eslint . --fix",
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
-		"test:e2e": "playwright test"
+		"test:e2e": "playwright test",
+		"test:python": "npm run build && cd test-apps/simple-python && ../../bin/sushify.js start \"python test-app.py\"",
+		"test:docker": "npm run build && cd test-apps/docker-compose && ../../bin/sushify.js start --docker=backend \"docker compose up\""
 	},
 	"lint-staged": {
 		"*.{js,ts,svelte}": [

@@ -36,10 +36,11 @@ This test app helps you:
    cd test-apps/simple-python
    ```
 
-2. **Start with Sushify** (using relative path):
+2. **Run the test** (from project root):
 
    ```bash
-   ../../bin/sushify.js start "python test-app.py"
+   cd ../../                    # Go to project root
+   npm run test:python          # Build and run test app
    ```
 
 3. **Watch the magic happen**:

@@ -36,10 +36,11 @@ This test app includes:
    cd test-apps/docker-compose
    ```
 
-2. **Start with Sushify** (using relative path, targeting backend service):
+2. **Run the test** (from project root):
 
    ```bash
-   ../../bin/sushify.js start --docker=backend "docker compose up"
+   cd ../../                    # Go to project root
+   npm run test:docker          # Build and run Docker test app
    ```
 
 3. **Watch the services start**:

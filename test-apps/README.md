@@ -11,6 +11,21 @@ These test apps help you:
 - ✅ **Reproduce issues** and validate fixes
 - ✅ **Understand how Sushify works** under the hood
 
+## 🚀 Quick Start
+
+From the project root, run these convenience scripts to automatically build and test:
+
+```bash
+npm run test:python    # Test simple Python app
+npm run test:docker    # Test Docker Compose app
+```
+
+These scripts automatically:
+
+- ✅ Build Sushify (copies CLI files to `build/` directory)
+- ✅ Navigate to the test app directory
+- ✅ Run the test with proper Sushify configuration
+
 ## Available Test Apps
 
 ### 📁 [`simple-python/`](./simple-python/)

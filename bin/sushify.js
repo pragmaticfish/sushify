@@ -129,7 +129,7 @@ More info: https://github.com/pragmaticfish/sushify#readme
 		console.log(`🚀 Starting Sushify with command: ${userCommand}`);
 
 		try {
-			const { default: startSushify } = await import('../src/lib/cli/start-command.js');
+			const { default: startSushify } = await import('../build/lib/cli/start-command.js');
 			await startSushify(userCommand, dockerMode, dockerServices);
 		} catch (error) {
 			console.error('❌ Failed to start Sushify:', error.message);
