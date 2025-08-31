@@ -120,6 +120,15 @@ During setup, you'll be prompted for your password to install a development cert
 
 > **Note**: Python 3.8+ is required for HTTP traffic interception. The setup script will guide you through installation if Python is not found.
 
+### 📁 Data Directory
+
+Sushify creates a `~/.sushify/` directory in your home folder for:
+
+- **🔐 SSL certificates** - `mitmproxy-ca-cert.pem` (installed once during setup)
+- **🐳 Docker Compose temp files** - `docker-compose.sushify-*.yml` (auto-created and cleaned up)
+
+These files are automatically managed and typically don't require manual intervention. If you need to reset certificates or clear temp files, you can safely delete the `~/.sushify/` directory and run `./bin/sushify.js setup` again.
+
 ## 🐳 Docker Compose Support
 
 For testing containerized applications during development:

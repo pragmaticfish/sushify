@@ -8,8 +8,8 @@
 import { spawn, execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { platform } from 'os';
-import { existsSync, writeFileSync, unlinkSync } from 'fs';
+import { platform, homedir } from 'os';
+import { existsSync, writeFileSync, unlinkSync, mkdirSync } from 'fs';
 import { PORTS, getDashboardUrl, getProxyUrl, getDashboardApiUrl } from '../config/ports.js';
 import { nanoid } from 'nanoid';
 
@@ -71,11 +71,18 @@ async function checkSushifyPorts() {
 
 /**
  * Get a temporary Docker Compose override file path
- * @returns {string} Path to temporary compose file in current directory
+ * @returns {string} Path to temporary compose file in ~/.sushify/
  */
 function getTempComposeFile() {
+	const sushifyDir = join(homedir(), '.sushify');
+
+	// Ensure .sushify directory exists
+	if (!existsSync(sushifyDir)) {
+		mkdirSync(sushifyDir, { recursive: true });
+	}
+
 	const filename = `docker-compose.sushify-${nanoid(8)}.yml`;
-	return filename; // Create in current working directory
+	return join(sushifyDir, filename);
 }
 
 // Process management with proper typing
@@ -112,7 +119,8 @@ async function cleanup() {
 			unlinkSync(processes.tempComposeFile);
 			console.log(`🧹 Removed temp file: ${processes.tempComposeFile}`);
 		} catch (error) {
-			console.warn(`⚠️  Could not remove ${processes.tempComposeFile}:`, error);
+			const message = error instanceof Error ? error.message : String(error);
+			console.log(`⚠️  Could not remove ${processes.tempComposeFile}: ${message}`);
 		}
 	}
 
@@ -534,10 +542,11 @@ services:
       - "host.docker.internal:host-gateway"
 `;
 
-	// Add auto-configured service
+	// Add proxy configuration to the auto-configured service
+	// Note: We only override environment and volumes, not build context
 	const serviceName = autoConfigServices[0];
 	proxyOverride += `
-  # Auto-configured service for LLM calls
+  # Proxy configuration for ${serviceName} service
   ${serviceName}:
     environment:
       # Proxy configuration
@@ -568,10 +577,11 @@ services:
 
 	// Add our override file to the docker-compose command
 	if (dockerCommand.includes('docker-compose') || dockerCommand.includes('docker compose')) {
-		// Insert our override file before any existing -f files, but put the original compose file after it
+		// Put the original compose file first, then our override file
+		// This ensures the build context is resolved from the original file's directory
 		const fileFlags = dockerCommand.includes(' -f ')
 			? ` -f ${tempComposeFile}`
-			: ` -f ${tempComposeFile} -f docker-compose.yml`;
+			: ` -f docker-compose.yml -f ${tempComposeFile}`;
 		dockerCommand = dockerCommand.replace(
 			/(docker-compose|docker\s+compose)(\s+)/,
 			`$1$2${fileFlags} `
@@ -625,7 +635,7 @@ services:
 				processes.tempComposeFile = null;
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
-				console.log(`⚠️  Could not remove ${processes.tempComposeFile}:`, message);
+				console.log(`⚠️  Could not remove ${processes.tempComposeFile}: ${message}`);
 			}
 		}
 
