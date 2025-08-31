@@ -16,10 +16,10 @@ This test app helps you:
 
 This test app includes:
 
-- 🔧 **Backend** (Node.js): Express server making external HTTPS API calls
+- 🔧 **Backend** (Node.js 24): **Normal** Express server using native `fetch()` (tests real-world modern apps)
 - 🌐 **Frontend** (Nginx): Static web server serving HTML
 - 🗄️ **Database** (PostgreSQL): Sample database service
-- 🔗 **Proxy Bridge** (socat): Auto-configured by Sushify for container-to-host communication
+- 🔗 **Host Proxy Access**: Direct connection to Sushify proxy via `host.docker.internal`
 
 ## 🚀 How to Run (Development)
 

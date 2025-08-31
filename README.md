@@ -2,7 +2,7 @@
 
 **"Turn your prompt salad into sushi"** 🥗 → 🍣
 
-Transform messy, contradictory prompts into precision-crafted LLM interactions. Capture, analyze, and refine your AI conversations with zero code changes.
+Automatically capture and analyze every LLM API call in your application. Transform messy, contradictory prompts into precision-crafted AI interactions with zero code changes.
 
 > **📖 This README is for developers contributing to Sushify.** For end-user documentation, visit the [marketing site](link-to-be-added) or try the [playground](link-to-be-added).
 
@@ -11,6 +11,7 @@ Transform messy, contradictory prompts into precision-crafted LLM interactions. 
 ### Prerequisites
 
 - **[Node.js](https://nodejs.org/en/download)** version ^20.19 || ^22.12 || >=24 (Vite requirement)
+  - **Recommended: v24.0.0+** for AI application proxy support
 - **[Python 3.8+](https://www.python.org/downloads/)** with pip (for HTTP proxy functionality)
 - **[OpenAI API Key](https://platform.openai.com/api-keys)** (optional, for prompt analysis)
 - **Git** for cloning the repository
@@ -80,47 +81,33 @@ source ~/.zshrc
 
 **Cost:** ~$0.01-0.05 per prompt analysis using GPT-4.1
 
-## 🔧 Node.js Application Support
+## 🚀 JavaScript Runtime Support
 
-Sushify supports Node.js applications with different levels of compatibility:
+### ✅ **Recommended: Modern Runtimes** (Zero Configuration)
 
-### ✅ **Recommended: Node.js v23+** (Native `fetch()` Support)
+**Perfect for AI applications with zero code changes:**
 
-**Perfect for modern AI applications:**
+- ✅ **Node.js v24.0.0+** - Native `fetch()` proxy support
+- ✅ **Deno** - Built-in proxy support for `fetch()`
+- ✅ **Bun** - [Native `HTTP_PROXY` support](https://bun.com/guides/http/proxy)
+- ✅ **OpenAI SDK** - Works automatically on modern runtimes
+- ✅ **Anthropic SDK** - Works automatically on modern runtimes
+- ✅ **All AI SDKs** - Most use native `fetch()` internally
 
-- ✅ **OpenAI SDK** - Full support with zero code changes
-- ✅ **Anthropic SDK** - Full support with zero code changes
-- ✅ **Any library using native `fetch()`** - Automatic proxy support
-- ✅ **Clean implementation** - Uses Node.js built-in proxy support
+**Just run your app with Sushify - no code changes needed!** 🎯
 
-**Requirements:**
+### ⚠️ **Legacy Node.js Support** (< v24)
 
-- Node.js v23.0.0 or later
-- Uses native `fetch()` for HTTP requests
+**Limited compatibility due to AI SDK requirements:**
 
-**Technical details:** Leverages [Node.js PR #57165](https://github.com/nodejs/node/pull/57165) which adds `NODE_USE_ENV_PROXY=1` support for automatic proxy configuration.
+- ❌ **OpenAI SDK** - Requires native `fetch()` (Node.js v24.0.0+)
+- ❌ **Anthropic SDK** - Requires native `fetch()` (Node.js v24.0.0+)
+- ❌ **Most AI SDKs** - Use native `fetch()` internally
+- ⚠️ **Custom HTTP clients** - Require manual proxy configuration
 
-### ⚠️ **Limited: HTTP Libraries** (Older Node.js Versions)
+**💡 Recommendation:** Upgrade to Node.js v24+ for the best AI development experience!
 
-**Works with any Node.js version, but with important limitations:**
-
-- ✅ **`axios`** - Full support (respects `HTTP_PROXY` automatically)
-- ✅ **`node-fetch`** - Full support (respects `HTTP_PROXY` automatically)
-- ✅ **`got`, `superagent`** - Full support (built-in proxy support)
-- ❌ **OpenAI SDK** - Uses native `fetch()` internally, won't work on Node.js < v23
-- ❌ **Anthropic SDK** - Uses native `fetch()` internally, won't work on Node.js < v23
-- ❌ **Most AI SDKs** - Typically use native `fetch()`, require Node.js v23+
-
-**Important:** Most modern AI applications use SDKs that rely on native `fetch()`. For the best AI development experience, use Node.js v23+.
-
-### 📋 **Legacy Applications** (Future Support)
-
-For applications that can't upgrade Node.js or use compatible HTTP libraries:
-
-- 🔄 **Manual integration** - Direct API calls to Sushify (planned)
-- 🔄 **Custom adapters** - For specific legacy HTTP clients (maybe planned)
-
-**Most AI applications use SDKs (OpenAI, Anthropic, etc.) that require Node.js v23+ for proxy support!** 🚀
+📚 **Need help with older Node.js versions?** See [`docs/OLD-NODE-INSTRUCTIONS.md`](./docs/OLD-NODE-INSTRUCTIONS.md) for detailed setup instructions.
 
 ### 🐍 **Python Application Support**
 
@@ -135,24 +122,22 @@ Python applications work out-of-the-box with Sushify's language-agnostic proxy c
 
 ### 🌐 **Universal Language Support**
 
-**Any language/runtime that respects standard proxy environment variables:**
+**Works with any language that respects standard proxy environment variables:**
 
-- ✅ **Bun** - [Native `HTTP_PROXY` support](https://bun.com/guides/http/proxy) in `fetch()`
-- ✅ **Deno** - Built-in proxy environment variable support
-- ✅ **Go** - Standard `net/http` package respects `HTTP_PROXY`
-- ✅ **Rust** - `reqwest` and other HTTP clients support proxy env vars
-- ✅ **Java** - JVM system properties for proxy configuration
-- ✅ **C#/.NET** - `HttpClient` with proxy environment variables
-- ✅ **PHP** - `cURL` and `Guzzle` support standard proxy configuration
+- ✅ **Go** - `net/http` package
+- ✅ **Rust** - `reqwest` and other HTTP clients
+- ✅ **Java** - JVM proxy configuration
+- ✅ **C#/.NET** - `HttpClient` with proxy support
+- ✅ **PHP** - `cURL` and `Guzzle`
+- ✅ **And many more** - Most modern HTTP clients support standard proxy env vars
 
-**Environment variables Sushify sets:**
+**Sushify automatically configures these environment variables:**
 
 - `HTTP_PROXY` / `HTTPS_PROXY` - Standard proxy configuration
 - `SSL_CERT_FILE` / `REQUESTS_CA_BUNDLE` / `CURL_CA_BUNDLE` - Certificate paths
-- `NODE_EXTRA_CA_CERTS` - Node.js specific certificate handling
-- `NODE_USE_ENV_PROXY=1` - Node.js v23+ native proxy support
+- Language-specific variables for Node.js, Python, etc.
 
-**If your application's HTTP client respects these standard environment variables, it will work with Sushify automatically!** 🎯
+**If your app's HTTP client respects these standard environment variables, it works automatically!** 🎯
 
 ## 🎯 Development Usage
 
