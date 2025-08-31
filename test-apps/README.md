@@ -42,6 +42,14 @@ These scripts automatically:
 - **Features**: Node.js backend with external API calls, Nginx frontend, PostgreSQL database
 - **Usage**: `../../bin/sushify.js start --docker=backend "docker compose up"`
 
+### 📁 [`open-ai-simple-chat/`](./open-ai-simple-chat/)
+
+- **Type**: Node.js WebSocket chat application
+- **Use Case**: Testing OpenAI SDK integration and real-time LLM calls
+- **Features**: Interactive web chat, OpenAI API calls, WebSocket communication
+- **Requirements**: Node.js v23+, `OPENAI_API_KEY` environment variable
+- **Usage**: `../../bin/sushify.js start "npm start"`
+
 ## Quick Start for Development
 
 1. **Clone the repository**:

@@ -14,6 +14,11 @@ import traceback
 from mitmproxy import http
 from typing import Optional
 
+# Debug logging for development
+print("🔥 SUSHIFY INTERCEPTOR LOADED!")
+with open("/tmp/sushify-debug.log", "a") as f:
+    f.write("🔥 SUSHIFY INTERCEPTOR LOADED!\n")
+
 # Configuration
 SUSHIFY_SERVER_URL = os.getenv("SUSHIFY_DASHBOARD_URL", "http://localhost:7331")  # SvelteKit dashboard server
 CAPTURE_STATUS_ENDPOINT = f"{SUSHIFY_SERVER_URL}/api/proxy/status"
@@ -34,11 +39,27 @@ TEST_DOMAINS = ["httpbin.org", "jsonplaceholder.typicode.com", "api.github.com"]
 
 def request(flow: http.HTTPFlow) -> None:
     """Called when request is made"""
+    print(f"🚀 REQUEST INTERCEPTED: {flow.request.method} {flow.request.pretty_url}")
+    with open("/tmp/sushify-debug.log", "a") as f:
+        f.write(f"🚀 REQUEST INTERCEPTED: {flow.request.method} {flow.request.pretty_url}\n")
+    
+    # Log request body for debugging (useful for LLM analysis)
+    if flow.request.content:
+        try:
+            body_text = flow.request.content.decode('utf-8')
+            with open("/tmp/sushify-debug.log", "a") as f:
+                f.write(f"📋 REQUEST BODY: {body_text}\n")
+        except UnicodeDecodeError:
+            pass  # Skip binary content
+    
     # Add timestamp for latency calculation
     flow.metadata["sushify_start_time"] = time.time()
 
 def response(flow: http.HTTPFlow) -> None:
     """Called when response is received - captures complete exchange"""
+    print(f"📥 RESPONSE INTERCEPTED: {flow.request.method} {flow.request.pretty_url} -> {flow.response.status_code}")
+    with open("/tmp/sushify-debug.log", "a") as f:
+        f.write(f"📥 RESPONSE INTERCEPTED: {flow.request.method} {flow.request.pretty_url} -> {flow.response.status_code}\n")
     
     try:
         # Only capture if enabled
@@ -87,6 +108,7 @@ def response(flow: http.HTTPFlow) -> None:
 def should_capture_request(request) -> bool:
     """Determine if we should capture this request"""
     host = request.host.lower()
+    path = request.path.lower()
     
     # Capture AI vendor requests (high priority)
     if is_ai_domain(host):

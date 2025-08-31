@@ -17,8 +17,8 @@ def make_request(url, description):
     """Make an HTTP request and show the result"""
     print("Testing {}: {}".format(description, url))
     try:
-        # Disable SSL verification when using proxy
-        response = requests.get(url, timeout=10, verify=False)
+        # Use default SSL verification (like a real app)
+        response = requests.get(url, timeout=10)
         print("   Success: {} {} ({} chars)".format(response.status_code, response.reason, len(response.text)))
     except Exception as e:
         print("   Error: {}".format(e))

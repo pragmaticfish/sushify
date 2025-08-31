@@ -1,0 +1,25 @@
+{
+	"name": "openai-simple-chat",
+	"version": "1.0.0",
+	"description": "OpenAI WebSocket chat test app for Sushify",
+	"main": "src/app.ts",
+	"scripts": {
+		"start": "npx ts-node --skip-ignore ./src/app.ts",
+		"dev": "npx nodemon"
+	},
+	"author": "Sushify",
+	"license": "MIT",
+	"dependencies": {
+		"@types/node": "^24.3.0",
+		"openai": "^5.15.0",
+		"ws": "^8.16.0",
+		"zod": "^3.25.76"
+	},
+	"devDependencies": {
+		"@types/ws": "^8.5.10",
+		"nodemon": "^3.1.0",
+		"ts-node": "^10.9.2",
+		"tsconfig-paths": "^4.2.0",
+		"typescript": "^5.4.2"
+	}
+}

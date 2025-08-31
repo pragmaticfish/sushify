@@ -26,7 +26,7 @@ This test app helps you:
 
 - **Complete setup** from [main README](../../README.md#development-setup)
 - **Python 3.6+** installed
-- **`requests` library**: `pip install requests`
+- **Python dependencies**: `pip install -r requirements.txt`
 
 ### Run the Test
 

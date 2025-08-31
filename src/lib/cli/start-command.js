@@ -409,10 +409,13 @@ function startLocalApp(command, resolve, reject) {
 		...process.env,
 		HTTP_PROXY: getProxyUrl(),
 		HTTPS_PROXY: getProxyUrl(),
-		// Set certificate paths for different tools
-		SSL_CERT_FILE: `${process.env.HOME}/.mitmproxy/mitmproxy-ca-cert.pem`,
-		REQUESTS_CA_BUNDLE: `${process.env.HOME}/.mitmproxy/mitmproxy-ca-cert.pem`,
-		CURL_CA_BUNDLE: `${process.env.HOME}/.mitmproxy/mitmproxy-ca-cert.pem`
+		// Set certificate paths for different tools/languages
+		SSL_CERT_FILE: `${process.env.HOME}/.mitmproxy/mitmproxy-ca-cert.pem`, // Generic SSL cert
+		REQUESTS_CA_BUNDLE: `${process.env.HOME}/.mitmproxy/mitmproxy-ca-cert.pem`, // Python requests
+		CURL_CA_BUNDLE: `${process.env.HOME}/.mitmproxy/mitmproxy-ca-cert.pem`, // curl
+		NODE_EXTRA_CA_CERTS: `${process.env.HOME}/.mitmproxy/mitmproxy-ca-cert.pem`, // Node.js certificates
+		// Enable native Node.js v23+ proxy support for fetch()
+		NODE_USE_ENV_PROXY: '1'
 	};
 
 	const userApp = spawn(cmd, cmdArgs, {
