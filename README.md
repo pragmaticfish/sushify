@@ -87,7 +87,7 @@ During setup, you'll be prompted for your password to install a development cert
 
 **Security Notes:**
 
-- ✅ Certificate only works with Sushify proxy (localhost:8080)
+- ✅ Certificate only works with Sushify proxy (localhost:7332)
 - ✅ Cannot intercept traffic without explicit proxy configuration
 - ✅ Only active when you run `sushify start`
 - ✅ Can be removed anytime with `sushify cleanup`

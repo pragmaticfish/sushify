@@ -57,7 +57,7 @@ These test apps help you:
 
 When running any test app with Sushify, you'll get:
 
-- 🎛️ **Dashboard**: Real-time view of captured HTTP/HTTPS traffic at `http://localhost:3001`
+- 🎛️ **Dashboard**: Real-time view of captured HTTP/HTTPS traffic at `http://localhost:7331`
 - 🔍 **Detailed Exchanges**: Request/response details, timing, headers
 - 🌐 **Universal Compatibility**: Works with any language or deployment method
 
@@ -68,8 +68,8 @@ When running any test app with Sushify, you'll get:
 ```
 🚀 Starting Sushify with command: python test-app.py
 🍣 Sushify - Turn your prompt salad into sushi
-✅ Dashboard running at: http://localhost:3001
-✅ Proxy running at: http://localhost:8080
+✅ Dashboard running at: http://localhost:7331
+✅ Proxy running at: http://localhost:7332
 📡 Making API calls...
 ✅ All traffic captured successfully
 ```

@@ -7,7 +7,7 @@ This script works with any process/language - Python, Node.js, Go, Rust, etc.
 The target application just needs to use HTTP_PROXY environment variable.
 """
 
-import json
+import os
 import requests
 import time
 import traceback
@@ -15,7 +15,7 @@ from mitmproxy import http
 from typing import Optional
 
 # Configuration
-SUSHIFY_SERVER_URL = "http://localhost:3001"  # SvelteKit dashboard server
+SUSHIFY_SERVER_URL = os.getenv("SUSHIFY_DASHBOARD_URL", "http://localhost:7331")  # SvelteKit dashboard server
 CAPTURE_STATUS_ENDPOINT = f"{SUSHIFY_SERVER_URL}/api/proxy/status"
 EXCHANGES_ENDPOINT = f"{SUSHIFY_SERVER_URL}/api/proxy/exchanges"
 
@@ -100,8 +100,7 @@ def should_capture_request(request) -> bool:
 
 def is_ai_domain(host: str) -> bool:
     """Check if this is an AI vendor domain"""
-    host_lower = host.lower()
-    return any(domain in host_lower for domain in AI_DOMAINS)
+    return any(domain in host.lower() for domain in AI_DOMAINS)
 
 def get_safe_body(text: Optional[str]) -> str:
     """Get request/response body safely, truncate if too large"""

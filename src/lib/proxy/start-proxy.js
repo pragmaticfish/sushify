@@ -8,6 +8,7 @@
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { PORTS, getProxyUrl } from '../config/ports.js';
 import { existsSync } from 'fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -21,14 +22,14 @@ if (!existsSync(interceptorPath)) {
 
 console.log('🚀 Starting mitmproxy with Sushify interceptor...');
 console.log('📍 Interceptor script:', interceptorPath);
-console.log('🔗 Proxy will be available at: http://localhost:8080');
+console.log(`🔗 Proxy will be available at: ${getProxyUrl()}`);
 console.log('🌐 mitmweb UI will be available at: http://localhost:8081');
 console.log('');
 console.log('🔑 This proxy works with ANY language/process:');
-console.log('   • Node.js: HTTP_PROXY=http://localhost:8080 node app.js');
-console.log('   • Python:  HTTP_PROXY=http://localhost:8080 python app.py');
-console.log('   • Go:      HTTP_PROXY=http://localhost:8080 go run main.go');
-console.log('   • curl:    curl -x localhost:8080 http://httpbin.org/get');
+console.log(`   • Node.js: HTTP_PROXY=${getProxyUrl()} node app.js`);
+console.log(`   • Python:  HTTP_PROXY=${getProxyUrl()} python app.py`);
+console.log(`   • Go:      HTTP_PROXY=${getProxyUrl()} go run main.go`);
+console.log(`   • curl:    curl -x localhost:${PORTS.PROXY} http://httpbin.org/get`);
 console.log('');
 
 // Check if mitmproxy is available
@@ -69,8 +70,8 @@ async function startProxy() {
 			'0.0.0.0', // Allow external access to web UI
 			'--web-port',
 			'8081', // Web UI port
-			'--listen-port',
-			'8080', // Proxy port
+			'-p',
+			PORTS.PROXY.toString(), // Proxy port
 			'-s',
 			interceptorPath, // Our interceptor script
 			'--set',

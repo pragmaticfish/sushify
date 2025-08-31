@@ -12,6 +12,7 @@ import { platform } from 'os';
 import { existsSync, writeFileSync, unlinkSync } from 'fs';
 import { execSync } from 'child_process';
 import fetch from 'node-fetch';
+import { PORTS, getDashboardUrl, getProxyUrl, getDashboardApiUrl } from '../config/ports.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -157,9 +158,9 @@ function startProductionServer(
 		stdio: 'pipe',
 		env: {
 			...process.env,
-			PORT: '3001',
+			PORT: PORTS.DASHBOARD.toString(),
 			HOST: '0.0.0.0',
-			ORIGIN: 'http://localhost:3001',
+			ORIGIN: getDashboardUrl(),
 			NODE_ENV: 'production'
 		}
 	});
@@ -173,12 +174,12 @@ function startProductionServer(
 		if (
 			(output.includes('Listening on') ||
 				output.includes('Server listening') ||
-				output.includes('3001') ||
-				output.includes('0.0.0.0:3001')) &&
+				output.includes(PORTS.DASHBOARD.toString()) ||
+				output.includes(`0.0.0.0:${PORTS.DASHBOARD}`)) &&
 			!dashboardReady
 		) {
 			dashboardReady = true;
-			console.log('✅ Dashboard running at: http://localhost:3001');
+			console.log(`✅ Dashboard running at: ${getDashboardUrl()}`);
 			processes.dashboard = server;
 			resolve(server);
 		}
@@ -227,9 +228,18 @@ function startProxy() {
 
 		const interceptorPath = join(__dirname, '../proxy/interceptor.py');
 
-		const proxy = spawn('mitmdump', ['-s', interceptorPath, '--listen-port', '8080'], {
-			stdio: 'pipe'
-		});
+		const proxy = spawn(
+			'mitmdump',
+			['-s', interceptorPath, '-p', PORTS.PROXY.toString(), '--listen-host', '127.0.0.1'],
+			{
+				stdio: ['pipe', 'pipe', 'pipe'],
+				env: {
+					...process.env,
+					SUSHIFY_DASHBOARD_URL: getDashboardUrl(),
+					PYTHONUNBUFFERED: '1' // Force Python unbuffered output
+				}
+			}
+		);
 
 		let proxyReady = false;
 		let startupLogs = '';
@@ -240,7 +250,7 @@ function startProxy() {
 
 			// Look for the specific mitmproxy startup message
 			if (output.includes('HTTP(S) proxy listening') && !proxyReady) {
-				console.log('✅ Proxy running at: http://localhost:8080');
+				console.log(`✅ Proxy running at: ${getProxyUrl()}`);
 				proxyReady = true;
 				processes.proxy = proxy;
 				resolve(proxy);
@@ -248,7 +258,8 @@ function startProxy() {
 		});
 
 		proxy.stderr.on('data', (data) => {
-			startupLogs += data.toString();
+			const output = data.toString();
+			startupLogs += output;
 		});
 
 		proxy.on('close', (code) => {
@@ -315,8 +326,8 @@ function startLocalApp(command, resolve, reject) {
 	// Set up environment with proxy configuration
 	const env = {
 		...process.env,
-		HTTP_PROXY: 'http://localhost:8080',
-		HTTPS_PROXY: 'http://localhost:8080',
+		HTTP_PROXY: getProxyUrl(),
+		HTTPS_PROXY: getProxyUrl(),
 		// Set certificate paths for different tools
 		SSL_CERT_FILE: `${process.env.HOME}/.mitmproxy/mitmproxy-ca-cert.pem`,
 		REQUESTS_CA_BUNDLE: `${process.env.HOME}/.mitmproxy/mitmproxy-ca-cert.pem`,
@@ -359,7 +370,7 @@ function startLocalApp(command, resolve, reject) {
 async function checkForDockerMisconfiguration() {
 	try {
 		// Check if we have any exchanges captured yet
-		const response = await fetch('http://localhost:3001/api/proxy/exchanges');
+		const response = await fetch(`${getDashboardApiUrl()}/api/proxy/exchanges`);
 		const data = /** @type {{ total?: number }} */ (await response.json());
 
 		// If no exchanges captured and compose files exist, suggest --docker flag
@@ -441,9 +452,9 @@ services:
   # Add Sushify proxy as a service
   sushify-proxy-bridge:
     image: alpine/socat:latest
-    command: tcp-listen:8080,fork,reuseaddr tcp-connect:host.docker.internal:8080
+    command: tcp-listen:${PORTS.PROXY},fork,reuseaddr tcp-connect:host.docker.internal:${PORTS.PROXY}
     ports:
-      - "8080"
+      - "${PORTS.PROXY}"
     networks:
       - default
     extra_hosts:
@@ -457,8 +468,8 @@ services:
   ${serviceName}:
     environment:
       # Proxy configuration
-      HTTP_PROXY: http://sushify-proxy-bridge:8080
-      HTTPS_PROXY: http://sushify-proxy-bridge:8080
+      HTTP_PROXY: http://sushify-proxy-bridge:${PORTS.PROXY}
+      HTTPS_PROXY: http://sushify-proxy-bridge:${PORTS.PROXY}
       # Certificate configuration for different languages/tools
       SSL_CERT_FILE: /tmp/sushify-ca.pem                    # Generic SSL cert
       REQUESTS_CA_BUNDLE: /tmp/sushify-ca.pem              # Python requests
@@ -559,8 +570,8 @@ async function waitForDashboardReady() {
 			// Test the main API endpoints that the interceptor uses
 			// Use IPv4 explicitly to avoid IPv6 connectivity issues
 			const [statusResponse, exchangesResponse] = await Promise.all([
-				fetch('http://127.0.0.1:3001/api/proxy/status'),
-				fetch('http://127.0.0.1:3001/api/proxy/exchanges')
+				fetch(`${getDashboardApiUrl()}/api/proxy/status`),
+				fetch(`${getDashboardApiUrl()}/api/proxy/exchanges`)
 			]);
 
 			if (statusResponse.ok && exchangesResponse.ok) {
@@ -592,7 +603,7 @@ async function waitForDashboardReady() {
  * Open the dashboard in the default browser
  */
 function openDashboard() {
-	const url = 'http://localhost:3001';
+	const url = getDashboardUrl();
 	const currentPlatform = platform();
 
 	let command;
@@ -669,8 +680,8 @@ export default async function startSushify(userCommand, dockerMode = false, dock
 
 		console.log('');
 		console.log('🎉 Sushify is running!');
-		console.log('📊 Dashboard: http://localhost:3001');
-		console.log('🔗 Proxy: http://localhost:8080');
+		console.log(`📊 Dashboard: ${getDashboardUrl()}`);
+		console.log(`🔗 Proxy: ${getProxyUrl()}`);
 		console.log('');
 		console.log('💡 All HTTP/HTTPS traffic from your app is being captured');
 		console.log('💡 Press Ctrl+C to stop all services');
