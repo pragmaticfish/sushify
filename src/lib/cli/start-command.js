@@ -5,23 +5,86 @@
  * Orchestrates dashboard, proxy, and user application
  */
 
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { platform } from 'os';
 import { existsSync, writeFileSync, unlinkSync } from 'fs';
-import { execSync } from 'child_process';
-import fetch from 'node-fetch';
 import { PORTS, getDashboardUrl, getProxyUrl, getDashboardApiUrl } from '../config/ports.js';
+import { nanoid } from 'nanoid';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+/**
+ * Check if a port is in use using OS-specific commands
+ * @param {number} port - Port to check
+ * @returns {Promise<boolean>} True if port is in use
+ */
+async function checkPortInUse(port) {
+	try {
+		const currentPlatform = platform();
+		let command;
+
+		switch (currentPlatform) {
+			case 'darwin':
+			case 'linux':
+				// Only check for LISTEN state (servers), not connections
+				command = `lsof -i :${port} -s TCP:LISTEN`;
+				break;
+			case 'win32':
+				// On Windows, only check for LISTENING state
+				try {
+					const output = execSync(`netstat -ano | findstr :${port} | findstr LISTENING`, {
+						encoding: 'utf8'
+					});
+					return output.trim().length > 0;
+				} catch {
+					return false;
+				}
+			default:
+				// Fallback for unknown platforms - assume port is available
+				return false;
+		}
+
+		execSync(command, { stdio: 'ignore' });
+		return true; // Command succeeded, port is in use
+	} catch {
+		return false; // Command failed, port is not in use
+	}
+}
+
+/**
+ * Check if Sushify ports are in use
+ * @returns {Promise<{dashboardInUse: boolean, proxyInUse: boolean}>} Port usage status
+ */
+async function checkSushifyPorts() {
+	const [dashboardInUse, proxyInUse] = await Promise.all([
+		checkPortInUse(PORTS.DASHBOARD),
+		checkPortInUse(PORTS.PROXY)
+	]);
+
+	return {
+		dashboardInUse,
+		proxyInUse
+	};
+}
+
+/**
+ * Get a temporary Docker Compose override file path
+ * @returns {string} Path to temporary compose file in current directory
+ */
+function getTempComposeFile() {
+	const filename = `docker-compose.sushify-${nanoid(8)}.yml`;
+	return filename; // Create in current working directory
+}
+
 // Process management with proper typing
-/** @type {{ dashboard: import('child_process').ChildProcess | null, proxy: import('child_process').ChildProcess | null, userApp: import('child_process').ChildProcess | null }} */
+/** @type {{ dashboard: import('child_process').ChildProcess | null, proxy: import('child_process').ChildProcess | null, userApp: import('child_process').ChildProcess | null, tempComposeFile: string | null }} */
 let processes = {
 	dashboard: null,
 	proxy: null,
-	userApp: null
+	userApp: null,
+	tempComposeFile: null
 };
 
 // Cleanup function
@@ -41,6 +104,16 @@ async function cleanup() {
 	if (processes.dashboard) {
 		console.log('🛑 Stopping dashboard...');
 		processes.dashboard.kill('SIGTERM');
+	}
+
+	// Clean up temp Docker Compose file if it exists
+	if (processes.tempComposeFile) {
+		try {
+			unlinkSync(processes.tempComposeFile);
+			console.log(`🧹 Removed temp file: ${processes.tempComposeFile}`);
+		} catch (error) {
+			console.warn(`⚠️  Could not remove ${processes.tempComposeFile}:`, error);
+		}
 	}
 
 	// Note: Certificate is left installed for future sessions
@@ -484,9 +557,11 @@ services:
       - sushify-proxy-bridge
 `;
 
-	// Write the override file
-	writeFileSync('docker-compose.sushify.yml', proxyOverride);
-	console.log('📄 Generated docker-compose.sushify.yml with proxy configuration');
+	// Write the override file to temp location
+	const tempComposeFile = getTempComposeFile();
+	writeFileSync(tempComposeFile, proxyOverride);
+	processes.tempComposeFile = tempComposeFile;
+	console.log(`📄 Generated ${tempComposeFile} with proxy configuration`);
 
 	// Parse the original command and modify it
 	let dockerCommand = command;
@@ -495,8 +570,8 @@ services:
 	if (dockerCommand.includes('docker-compose') || dockerCommand.includes('docker compose')) {
 		// Insert our override file before any existing -f files, but put the original compose file after it
 		const fileFlags = dockerCommand.includes(' -f ')
-			? ' -f docker-compose.sushify.yml'
-			: ' -f docker-compose.sushify.yml -f docker-compose.yml';
+			? ` -f ${tempComposeFile}`
+			: ` -f ${tempComposeFile} -f docker-compose.yml`;
 		dockerCommand = dockerCommand.replace(
 			/(docker-compose|docker\s+compose)(\s+)/,
 			`$1$2${fileFlags} `
@@ -543,12 +618,15 @@ services:
 		console.log('🧹 Cleaning up generated files...');
 
 		// Clean up generated override file
-		try {
-			unlinkSync('docker-compose.sushify.yml');
-			console.log('✅ Removed docker-compose.sushify.yml');
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			console.log('⚠️  Could not remove docker-compose.sushify.yml:', message);
+		if (processes.tempComposeFile) {
+			try {
+				unlinkSync(processes.tempComposeFile);
+				console.log(`✅ Removed ${processes.tempComposeFile}`);
+				processes.tempComposeFile = null;
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				console.log(`⚠️  Could not remove ${processes.tempComposeFile}:`, message);
+			}
 		}
 
 		console.log('⏳ Waiting 2 seconds to ensure all exchanges are captured...');
@@ -633,14 +711,58 @@ export default async function startSushify(userCommand, dockerMode = false, dock
 	console.log('');
 
 	try {
-		// 1. Check dependencies
+		// 1. Check if Sushify is already running
+		console.log('🔍 Checking if Sushify is already running...');
+		const portStatus = await checkSushifyPorts();
+
+		if (portStatus.dashboardInUse || portStatus.proxyInUse) {
+			console.error('');
+			console.error('❌ Sushify appears to be already running!');
+			console.error('');
+			console.error('🔍 Port conflicts detected:');
+			if (portStatus.dashboardInUse) {
+				console.error(`  • Dashboard port ${PORTS.DASHBOARD} is in use`);
+			}
+			if (portStatus.proxyInUse) {
+				console.error(`  • Proxy port ${PORTS.PROXY} is in use`);
+			}
+			console.error('');
+			console.error('💡 Solutions:');
+			console.error('  1. Stop the existing Sushify instance (Ctrl+C in its terminal)');
+			console.error('  2. Kill processes using these ports:');
+
+			const currentPlatform = platform();
+			if (portStatus.dashboardInUse) {
+				if (currentPlatform === 'win32') {
+					console.error(
+						`     for /f "tokens=5" %a in ('netstat -ano ^| findstr :${PORTS.DASHBOARD} ^| findstr LISTENING') do taskkill /PID %a /F`
+					);
+				} else {
+					console.error(`     lsof -ti:${PORTS.DASHBOARD} -s TCP:LISTEN | xargs kill -9`);
+				}
+			}
+			if (portStatus.proxyInUse) {
+				if (currentPlatform === 'win32') {
+					console.error(
+						`     for /f "tokens=5" %a in ('netstat -ano ^| findstr :${PORTS.PROXY} ^| findstr LISTENING') do taskkill /PID %a /F`
+					);
+				} else {
+					console.error(`     lsof -ti:${PORTS.PROXY} -s TCP:LISTEN | xargs kill -9`);
+				}
+			}
+			console.error('  3. Wait a moment and try again');
+			console.error('');
+			process.exit(1);
+		}
+
+		// 2. Check dependencies
 		console.log('🔍 Checking dependencies...');
 		const depsOk = await checkDependencies();
 		if (!depsOk) {
 			process.exit(1);
 		}
 
-		// 2. Check if certificate is set up for HTTPS support
+		// 3. Check if certificate is set up for HTTPS support
 		try {
 			const { isCertificateInstalled } = await import('../proxy/certificate-manager.js');
 			if (!(await isCertificateInstalled())) {
@@ -663,19 +785,19 @@ export default async function startSushify(userCommand, dockerMode = false, dock
 
 		console.log('');
 
-		// 3. Start services in parallel
+		// 4. Start services in parallel
 		console.log('🏗️  Starting Sushify services...');
 		await Promise.all([startDashboard(), startProxy()]);
 
-		// 4. Wait for dashboard to be fully ready
+		// 5. Wait for dashboard to be fully ready
 		await waitForDashboardReady();
 
 		console.log('');
 
-		// 5. Start user application (now that everything is ready)
+		// 6. Start user application (now that everything is ready)
 		await startUserApp(userCommand, dockerMode, dockerServices);
 
-		// 6. Open browser
+		// 7. Open browser
 		openDashboard();
 
 		console.log('');

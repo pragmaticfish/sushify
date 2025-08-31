@@ -76,7 +76,6 @@
 		"@sveltejs/kit": "^2.22.0",
 		"@sveltejs/vite-plugin-svelte": "^6.0.0",
 		"nanoid": "^5.1.5",
-		"node-fetch": "^3.3.2",
 		"svelte": "^5.0.0",
 		"sveltekit-sse": "^0.14.3",
 		"typescript": "^5.0.0",
