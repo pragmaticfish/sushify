@@ -786,10 +786,22 @@ export default async function startSushify(userCommand, dockerMode = false, dock
 		console.log('');
 
 		// 4. Start services in parallel
+		// 4. Check analysis capability
+		const analysisEnabled = !!process.env.OPENAI_API_KEY;
+		if (analysisEnabled) {
+			console.log('🍣 Prompt analysis enabled');
+		} else {
+			console.log('🎯 Running in capture-only mode');
+			console.log('💡 Set OPENAI_API_KEY to enable prompt analysis');
+		}
+
+		console.log('');
+
+		// 5. Start services in parallel
 		console.log('🏗️  Starting Sushify services...');
 		await Promise.all([startDashboard(), startProxy()]);
 
-		// 5. Wait for dashboard to be fully ready
+		// 6. Wait for dashboard to be fully ready
 		await waitForDashboardReady();
 
 		console.log('');

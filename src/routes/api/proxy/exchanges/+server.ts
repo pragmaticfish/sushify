@@ -2,18 +2,20 @@ import { json } from '@sveltejs/kit';
 import type { RequestEvent } from './$types';
 import type { Exchange } from '$lib/types';
 import { broadcastExchange } from '$lib/sse-manager';
-
-// Simple in-memory store for captured exchanges
-// Later we'll use SQLite database as planned
-let exchanges: Exchange[] = [];
+import {
+	getExchanges,
+	addExchange,
+	getTotalExchanges,
+	clearExchanges
+} from '$lib/server/exchanges-store';
 
 export async function GET() {
 	// Return recent exchanges (limit to last 50 for now)
-	const recentExchanges = exchanges.slice(-50).reverse();
+	const recentExchanges = getExchanges(50);
 
 	return json({
 		exchanges: recentExchanges,
-		total: exchanges.length
+		total: getTotalExchanges()
 	});
 }
 
@@ -33,7 +35,7 @@ export async function POST({ request }: RequestEvent) {
 		};
 
 		// Store the exchange
-		exchanges.push(exchange);
+		addExchange(exchange);
 
 		console.log(
 			`📡 Received exchange: ${exchange.method} ${exchange.url} -> ${exchange.response_status}`
@@ -57,8 +59,7 @@ export async function POST({ request }: RequestEvent) {
 
 // Endpoint to clear all exchanges (for testing)
 export async function DELETE() {
-	const count = exchanges.length;
-	exchanges = [];
+	const count = clearExchanges();
 
 	console.log(`🗑️ Cleared ${count} exchanges`);
 

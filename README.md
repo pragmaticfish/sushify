@@ -12,6 +12,7 @@ Transform messy, contradictory prompts into precision-crafted LLM interactions. 
 
 - **[Node.js](https://nodejs.org/en/download)** version ^20.19 || ^22.12 || >=24 (Vite requirement)
 - **[Python 3.8+](https://www.python.org/downloads/)** with pip (for HTTP proxy functionality)
+- **[OpenAI API Key](https://platform.openai.com/api-keys)** (optional, for prompt analysis)
 - **Git** for cloning the repository
 - **Docker and Docker Compose** (optional, for testing containerized applications)
 
@@ -55,6 +56,29 @@ This will automatically:
 - ✅ Provide step-by-step guidance if any issues
 
 **Note:** You may be prompted for your password to install the HTTPS certificate.
+
+### 🧠 Enable Prompt Analysis (Optional)
+
+To enable real-time prompt quality analysis, set your OpenAI API key:
+
+```bash
+export OPENAI_API_KEY=sk-your-key-here
+```
+
+Or add it to your shell profile for persistence:
+
+```bash
+echo 'export OPENAI_API_KEY=sk-your-key-here' >> ~/.zshrc
+source ~/.zshrc
+```
+
+**With analysis enabled, you'll get:**
+
+- 🍣 **Quality scoring** for each prompt
+- 🔍 **Problem detection** in instructions
+- 📊 **Real-time feedback** in the dashboard
+
+**Cost:** ~$0.01-0.05 per prompt analysis using GPT-4.1
 
 ## 🎯 Development Usage
 

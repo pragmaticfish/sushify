@@ -1,13 +1,18 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { source } from 'sveltekit-sse';
-	import type { Exchange, CaptureStatusResponse, ExchangesResponse } from '$lib/types';
+	import type { Exchange, CaptureStatusResponse } from '$lib/types';
+	import type { PageData } from './$types';
 
-	let capturing = false;
-	let sessionId: string | null = null;
-	let error: string | null = null;
-	let exchanges: Exchange[] = [];
-	let loading = false;
+	// Get loaded data from page load function
+	let { data }: { data: PageData } = $props();
+
+	let capturing = $state(false);
+	let sessionId = $state<string | null>(null);
+	let error = $state<string | null>(null);
+	let exchanges = $state<Exchange[]>(data.initialExchanges);
+	let loading = $state(false);
+	let analysisEnabled = $state(data.analysisEnabled);
 
 	// SSE connection
 	let sseConnection: ReturnType<typeof source> | null = null;
@@ -15,7 +20,6 @@
 	// Check capture status and setup SSE on page load
 	onMount(() => {
 		checkCaptureStatus();
-		loadInitialExchanges();
 		setupSSE();
 	});
 
@@ -101,23 +105,6 @@
 		}
 	}
 
-	async function loadInitialExchanges() {
-		if (loading) return;
-
-		try {
-			loading = true;
-			const response = await fetch('/api/proxy/exchanges');
-			if (response.ok) {
-				const data: ExchangesResponse = await response.json();
-				exchanges = data.exchanges || [];
-			}
-		} catch (err) {
-			console.error('Failed to load exchanges:', err);
-		} finally {
-			loading = false;
-		}
-	}
-
 	function formatTime(timestamp: number) {
 		return new Date(timestamp * 1000).toLocaleTimeString();
 	}
@@ -141,11 +128,28 @@
 	<header>
 		<h1>🍣 Sushify Dashboard</h1>
 		<p>Turn your prompt salad into sushi</p>
+		<div class="analysis-status">
+			{#if analysisEnabled}
+				<span
+					class="analysis-indicator enabled"
+					title="Prompt analysis enabled - LLM calls will be analyzed for quality"
+				>
+					🧠 Analysis: ON
+				</span>
+			{:else}
+				<span
+					class="analysis-indicator disabled"
+					title="Prompt analysis disabled - Set OPENAI_API_KEY environment variable to enable"
+				>
+					🧠 Analysis: OFF
+				</span>
+			{/if}
+		</div>
 	</header>
 
 	<main>
 		<div class="capture-control">
-			<button class="toggle-btn" class:active={capturing} on:click={toggleCapture}>
+			<button class="toggle-btn" class:active={capturing} onclick={toggleCapture}>
 				{capturing ? '🟢 Capturing ON' : '⚫ Capturing OFF'}
 			</button>
 
@@ -236,6 +240,31 @@
 		font-size: 1.1rem;
 		color: #718096;
 		margin: 0.5rem 0 0 0;
+	}
+
+	.analysis-status {
+		margin-top: 1rem;
+	}
+
+	.analysis-indicator {
+		display: inline-block;
+		padding: 0.5rem 1rem;
+		border-radius: 8px;
+		font-size: 0.9rem;
+		font-weight: 600;
+		cursor: help;
+	}
+
+	.analysis-indicator.enabled {
+		background: #c6f6d5;
+		color: #22543d;
+		border: 1px solid #9ae6b4;
+	}
+
+	.analysis-indicator.disabled {
+		background: #fed7d7;
+		color: #742a2a;
+		border: 1px solid #feb2b2;
 	}
 
 	.capture-control {
