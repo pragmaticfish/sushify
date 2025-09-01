@@ -8,6 +8,73 @@ import {
 	getTotalExchanges,
 	clearExchanges
 } from '$lib/server/exchanges-store';
+import { analyzeLLMExchange, type CapturedExchange } from '$lib/server/analysis';
+import { checkAnalysisStatus } from '$lib/server/analysis-config';
+import { appendFileSync } from 'fs';
+
+// Analysis debug log file
+const ANALYSIS_LOG_FILE = '/tmp/sushify-analysis.log';
+
+function logToAnalysisFile(message: string) {
+	const timestamp = new Date().toISOString();
+	const logLine = `[${timestamp}] ${message}\n`;
+	try {
+		appendFileSync(ANALYSIS_LOG_FILE, logLine);
+	} catch (error) {
+		console.error('Failed to write to analysis log:', error);
+	}
+}
+
+// Background analysis function
+async function triggerBackgroundAnalysis(exchange: Exchange) {
+	try {
+		const startMessage = `🔍 Starting background analysis for exchange ${exchange.id}`;
+		console.log(startMessage);
+		logToAnalysisFile(startMessage);
+
+		// Convert Exchange type to CapturedExchange type for analysis
+		const capturedExchange: CapturedExchange = {
+			id: exchange.id,
+			timestamp: exchange.timestamp,
+			url: exchange.url,
+			method: exchange.method,
+			host: exchange.host,
+			request_body: exchange.request_body || '',
+			response_body: exchange.response_body || '',
+			request_headers: exchange.request_headers || {},
+			response_headers: exchange.response_headers || {},
+			is_ai_request: exchange.is_ai_request || false,
+			latency_ms: exchange.latency_ms || 0
+		};
+
+		logToAnalysisFile(
+			`📋 Exchange data: ${JSON.stringify({
+				id: capturedExchange.id,
+				url: capturedExchange.url,
+				method: capturedExchange.method,
+				hasRequestBody: !!capturedExchange.request_body,
+				hasResponseBody: !!capturedExchange.response_body,
+				isAiRequest: capturedExchange.is_ai_request
+			})}`
+		);
+
+		const analysis = await analyzeLLMExchange(capturedExchange);
+
+		if (analysis) {
+			// Analysis logging is already handled in analysis.ts
+			// TODO: Store analysis result with the exchange
+			// TODO: Broadcast analysis result via SSE
+		} else {
+			const noAnalysisMessage = `⚠️ No analysis generated for exchange ${exchange.id}`;
+			console.log(noAnalysisMessage);
+			logToAnalysisFile(noAnalysisMessage);
+		}
+	} catch (error) {
+		const errorMessage = `❌ Background analysis failed for exchange ${exchange.id}: ${error}`;
+		console.error(errorMessage);
+		logToAnalysisFile(errorMessage);
+	}
+}
 
 export async function GET() {
 	// Return recent exchanges (limit to last 50 for now)
@@ -37,14 +104,30 @@ export async function POST({ request }: RequestEvent) {
 		// Store the exchange
 		addExchange(exchange);
 
-		console.log(
-			`📡 Received exchange: ${exchange.method} ${exchange.url} -> ${exchange.response_status}`
-		);
+		const logMessage = `📡 Received exchange: ${exchange.method} ${exchange.url} -> ${exchange.response_status} | AI: ${exchange.is_ai_request}`;
+		console.log(logMessage);
+		logToAnalysisFile(logMessage);
 
 		// Broadcast to all connected SSE clients
 		broadcastExchange(exchange);
 
-		// TODO: Later we'll trigger LLM analysis here
+		// Trigger LLM analysis if enabled and this is an AI request
+		const analysisEnabled = checkAnalysisStatus();
+		const statusMessage = `🔬 Analysis status - Enabled: ${analysisEnabled}, AI Request: ${exchange.is_ai_request}`;
+		console.log(statusMessage);
+		logToAnalysisFile(statusMessage);
+
+		if (analysisEnabled && exchange.is_ai_request) {
+			const triggerMessage = `🚀 TRIGGERING analysis for exchange ${exchange.id}`;
+			console.log(triggerMessage);
+			logToAnalysisFile(triggerMessage);
+			// Run analysis in background without blocking the response
+			triggerBackgroundAnalysis(exchange);
+		} else {
+			const skipMessage = `⏭️ Skipping analysis - Enabled: ${analysisEnabled}, AI: ${exchange.is_ai_request}`;
+			console.log(skipMessage);
+			logToAnalysisFile(skipMessage);
+		}
 
 		return json({
 			success: true,

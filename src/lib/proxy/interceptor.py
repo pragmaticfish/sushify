@@ -110,8 +110,8 @@ def should_capture_request(request) -> bool:
     host = request.host.lower()
     path = request.path.lower()
     
-    # Capture AI vendor requests (high priority)
-    if is_ai_domain(host):
+    # For now, only capture OpenAI responses endpoint for analysis
+    if is_ai_domain(host) and "/v1/responses" in path:
         return True
     
     # Capture test domains for development
