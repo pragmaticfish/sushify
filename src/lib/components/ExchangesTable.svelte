@@ -22,7 +22,7 @@
 	// Helper function to get sushiness level for sorting
 	function getSushinessLevel(
 		exchange: Exchange
-	): 'red' | 'yellow' | 'green' | 'computing' | 'disabled' {
+	): 'red' | 'orange' | 'yellow' | 'green' | 'computing' | 'disabled' {
 		if (!exchange.is_ai_request) {
 			return 'disabled';
 		}
@@ -41,38 +41,42 @@
 		}
 
 		const issues = analysis.result.issues;
-		const highCount = issues.filter((i) => i.severity === 'high').length;
-		const mediumCount = issues.filter((i) => i.severity === 'medium').length;
+		const hasHigh = issues.some((i) => i.severity === 'high');
+		const hasMedium = issues.some((i) => i.severity === 'medium');
+		const hasLow = issues.some((i) => i.severity === 'low');
 
-		// Red: Any high severity issues OR many medium severity issues
-		if (highCount > 0 || mediumCount >= 3) {
+		// Show highest severity found
+		if (hasHigh) {
 			return 'red';
 		}
-
-		// Yellow: Medium severity issues or multiple low severity issues
-		if (mediumCount > 0 || issues.length >= 3) {
+		if (hasMedium) {
+			return 'orange';
+		}
+		if (hasLow) {
 			return 'yellow';
 		}
 
-		// Green: Only low severity issues or very few issues
-		return 'green';
+		// Fallback (shouldn't happen if issues array isn't empty)
+		return 'yellow';
 	}
 
 	// Helper function to get sort value for sushiness
 	function getSushinessSortValue(
-		level: 'red' | 'yellow' | 'green' | 'computing' | 'disabled'
+		level: 'red' | 'orange' | 'yellow' | 'green' | 'computing' | 'disabled'
 	): number {
 		switch (level) {
 			case 'red':
 				return 0; // Highest priority
-			case 'yellow':
+			case 'orange':
 				return 1;
+			case 'yellow':
+				return 2;
 			case 'computing':
-				return 2; // Computing states in middle
+				return 3; // Computing states in middle
 			case 'green':
-				return 3;
+				return 4;
 			case 'disabled':
-				return 4; // Lowest priority
+				return 5; // Lowest priority
 		}
 	}
 

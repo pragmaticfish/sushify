@@ -14,6 +14,10 @@ alwaysApply: true
 - Prefer types over interfaces.
 - Don't create duplicate type definitions. Instead create in a proper, shared file (e.g types.ts).
 
+
+## Svelte
+- Always include a key in each blocks
+
 ## General
 - Check for typescript/lint/svelte errors when you've completed a change and fix all of them.
 - Review all the changes you made with fresh eyes before returning to the user.

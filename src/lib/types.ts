@@ -5,24 +5,60 @@
 
 import { z } from 'zod';
 
-// Analysis output schema for LLM prompt analysis
+export const NO_ISSUES_FOUND = 'no issues found';
+
+const issueSchema = z.object({
+	category: z.enum([
+		'contradictory',
+		'vague',
+		'misleading',
+		'missing',
+		'over_complexity',
+		'bad_prompt_structure',
+		'other'
+	]),
+	title: z.string().describe('A concise title for the issue'),
+	description: z
+		.string()
+		.describe(
+			'A detailed yet concise description of the issue. Quote the specific problematic parts of the request and point to their origin (e.g system prompt, user prompt, tool descriptions, output schema)'
+		),
+	effect: z
+		.string()
+		.describe(
+			'The effect of the issue on the response. What is the specific problematic behavior that is manifesting in the response? if nothing, how it could manifest and under which circumstances?'
+		),
+	how_to_fix: z
+		.string()
+		.nullable()
+		.optional()
+		.describe('Your recommendation for how to fix the issue if it is possible'),
+	severity: z
+		.enum(['low', 'medium', 'high'])
+		.describe(
+			'The severity of the issue: high means it is a major discrepancy that manifests in the response, medium means it looks bad but somehow the response is still good, low means there is an opportunity for improvement (e.g. remove un-needed repetition, fix typos,improve wording, etc.)'
+		)
+});
+
 export const analysisOutputSchema = z.object({
 	result: z.union([
 		z.object({
-			issues: z.array(
-				z.object({
-					issue: z.string(),
-					description: z.string(),
-					severity: z.enum(['low', 'medium', 'high'])
-				})
-			)
+			issues: z.array(issueSchema)
 		}),
-		z.literal('no issues found')
+		z.literal(NO_ISSUES_FOUND)
 	])
 });
 
-// Infer the analysis result type from the Zod schema
-export type AnalysisResult = z.infer<typeof analysisOutputSchema>;
+export type AnalysisIssue = z.infer<typeof issueSchema> & { id: string };
+
+// Enhanced analysis result type used throughout the application
+export type AnalysisResult = {
+	result:
+		| typeof NO_ISSUES_FOUND
+		| {
+				issues: AnalysisIssue[];
+		  };
+};
 
 /**
  * Exchange data structure matching the interceptor.py output

@@ -1,5 +1,5 @@
 <script lang="ts">
-	type SushinessLevel = 'red' | 'yellow' | 'green' | 'computing' | 'disabled';
+	type SushinessLevel = 'red' | 'orange' | 'yellow' | 'green' | 'computing' | 'disabled';
 
 	let {
 		level,
@@ -13,8 +13,10 @@
 		switch (level) {
 			case 'red':
 				return 'High severity issues found in prompt analysis';
+			case 'orange':
+				return 'Medium severity issues found';
 			case 'yellow':
-				return 'Medium or multiple minor issues found';
+				return 'Low severity issues found';
 			case 'green':
 				return 'No issues found - good prompt quality';
 			case 'computing':
@@ -35,6 +37,8 @@
 			<div class="sushiness-disabled"></div>
 		{:else if level === 'red'}
 			🔴
+		{:else if level === 'orange'}
+			🟠
 		{:else if level === 'yellow'}
 			🟡
 		{:else}
