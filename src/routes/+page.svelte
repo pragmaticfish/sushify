@@ -3,6 +3,7 @@
 	import { source } from 'sveltekit-sse';
 	import type { Exchange, CaptureStatusResponse } from '$lib/types';
 	import type { PageData } from './$types';
+	import ExchangesTable from '$lib/components/ExchangesTable.svelte';
 
 	// Get loaded data from page load function
 	let { data }: { data: PageData } = $props();
@@ -40,9 +41,21 @@
 		exchangeStream.subscribe((data) => {
 			if (data) {
 				try {
-					const newExchange: Exchange = JSON.parse(data);
-					// Add new exchange to the beginning of the array
-					exchanges = [newExchange, ...exchanges];
+					const receivedExchange: Exchange = JSON.parse(data);
+
+					// Check if this exchange already exists (could be an update with analysis)
+					const existingIndex = exchanges.findIndex((ex) => ex.id === receivedExchange.id);
+
+					if (existingIndex !== -1) {
+						// Update existing exchange
+						exchanges[existingIndex] = receivedExchange;
+						exchanges = [...exchanges]; // Trigger reactivity
+						console.log('📊 Updated exchange with analysis:', receivedExchange.id);
+					} else {
+						// Add new exchange to the beginning of the array
+						exchanges = [receivedExchange, ...exchanges];
+						console.log('📡 Added new exchange:', receivedExchange.id);
+					}
 				} catch (err) {
 					console.error('Failed to parse exchange data:', err);
 				}
@@ -103,24 +116,6 @@
 			error = `Failed to ${action} capture: ${err instanceof Error ? err.message : String(err)}`;
 			console.error('❌', error);
 		}
-	}
-
-	function formatTime(timestamp: number) {
-		return new Date(timestamp * 1000).toLocaleTimeString();
-	}
-
-	function getStatusEmoji(status: number) {
-		if (status >= 200 && status < 300) return '✅';
-		if (status >= 400 && status < 500) return '⚠️';
-		if (status >= 500) return '❌';
-		return '🔄';
-	}
-
-	function getDomainEmoji(url: string) {
-		if (url.includes('api.openai.com')) return '🤖';
-		if (url.includes('api.anthropic.com')) return '🤖';
-		if (url.includes('api.cohere.ai')) return '🤖';
-		return '🌐';
 	}
 </script>
 
@@ -190,28 +185,7 @@
 					{/if}
 				</div>
 			{:else}
-				<div class="exchanges-list">
-					{#each exchanges as exchange (exchange.id)}
-						<div class="exchange-item">
-							<div class="exchange-header">
-								<span class="method">{exchange.method}</span>
-								<span class="domain">{getDomainEmoji(exchange.url)}</span>
-								<span class="url">{exchange.url}</span>
-								<span class="status"
-									>{getStatusEmoji(exchange.response_status)} {exchange.response_status}</span
-								>
-								<span class="time">{formatTime(exchange.timestamp)}</span>
-							</div>
-							<div class="exchange-details">
-								<span class="latency">⏱️ {exchange.latency_ms}ms</span>
-								{#if exchange.is_ai_request}
-									<span class="ai-badge">🤖 AI Request</span>
-								{/if}
-								<span class="host">{exchange.host}</span>
-							</div>
-						</div>
-					{/each}
-				</div>
+				<ExchangesTable {exchanges} {analysisEnabled} />
 			{/if}
 		</div>
 	</main>
@@ -353,89 +327,5 @@
 	.empty-state p {
 		color: #a0aec0;
 		margin: 0.5rem 0;
-	}
-
-	.exchanges-list {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.exchange-item {
-		background: white;
-		border: 1px solid #e2e8f0;
-		border-radius: 8px;
-		padding: 1rem;
-		transition: all 0.2s ease;
-	}
-
-	.exchange-item:hover {
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-		border-color: #cbd5e0;
-	}
-
-	.exchange-header {
-		display: flex;
-		gap: 1rem;
-		align-items: center;
-		margin-bottom: 0.5rem;
-		flex-wrap: wrap;
-	}
-
-	.method {
-		background: #4299e1;
-		color: white;
-		padding: 0.2rem 0.5rem;
-		border-radius: 4px;
-		font-size: 0.8rem;
-		font-weight: 600;
-		min-width: 60px;
-		text-align: center;
-	}
-
-	.domain {
-		font-size: 1.2rem;
-	}
-
-	.url {
-		flex: 1;
-		color: #4a5568;
-		font-family: 'Monaco', 'Menlo', monospace;
-		font-size: 0.85rem;
-		word-break: break-all;
-	}
-
-	.status {
-		font-weight: 600;
-		color: #2d3748;
-	}
-
-	.time {
-		color: #718096;
-		font-size: 0.8rem;
-	}
-
-	.exchange-details {
-		display: flex;
-		gap: 1rem;
-		align-items: center;
-		font-size: 0.8rem;
-		color: #718096;
-	}
-
-	.latency {
-		color: #805ad5;
-	}
-
-	.ai-badge {
-		background: #48bb78;
-		color: white;
-		padding: 0.2rem 0.5rem;
-		border-radius: 4px;
-		font-weight: 600;
-	}
-
-	.host {
-		font-family: 'Monaco', 'Menlo', monospace;
 	}
 </style>

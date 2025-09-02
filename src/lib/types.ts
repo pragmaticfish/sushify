@@ -3,6 +3,27 @@
  * All types are shared across the application to avoid duplication
  */
 
+import { z } from 'zod';
+
+// Analysis output schema for LLM prompt analysis
+export const analysisOutputSchema = z.object({
+	result: z.union([
+		z.object({
+			issues: z.array(
+				z.object({
+					issue: z.string(),
+					description: z.string(),
+					severity: z.enum(['low', 'medium', 'high'])
+				})
+			)
+		}),
+		z.literal('no issues found')
+	])
+});
+
+// Infer the analysis result type from the Zod schema
+export type AnalysisResult = z.infer<typeof analysisOutputSchema>;
+
 /**
  * Exchange data structure matching the interceptor.py output
  */
@@ -23,6 +44,7 @@ export type Exchange = {
 	captured_at: string;
 	is_ai_request: boolean;
 	server_received_at?: string; // Added by server
+	analysis_result?: AnalysisResult | null; // Analysis result if available
 };
 
 /**

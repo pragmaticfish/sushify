@@ -3,8 +3,9 @@
  */
 
 import { callModel } from './llm';
-import { z } from 'zod';
 import { appendFileSync } from 'fs';
+import type { AnalysisResult } from '$lib/types';
+import { analysisOutputSchema } from '$lib/types';
 
 // Analysis debug log file
 const ANALYSIS_LOG_FILE = '/tmp/sushify-analysis.log';
@@ -34,24 +35,6 @@ and look for issues like:
 - Misleading instructions, e.g. system prompt says to use a tool but the tool is not provided or the prompt tell the LLM to expect input of a certain shape but provides input of a different shape
 - Vague instructions, e.g. the agent is asked to perform a task but isn't given enough context or information in order to do so
 `;
-
-// TODO - this is highly simplistic - just a starting point
-const analysisOutputSchema = z.object({
-	result: z.union([
-		z.object({
-			issues: z.array(
-				z.object({
-					issue: z.string(),
-					description: z.string(),
-					severity: z.enum(['low', 'medium', 'high'])
-				})
-			)
-		}),
-		z.literal('no issues found')
-	])
-});
-
-export type AnalysisResult = z.infer<typeof analysisOutputSchema>;
 
 // Type for captured exchange data
 export interface CapturedExchange {

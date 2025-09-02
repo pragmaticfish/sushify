@@ -1,4 +1,4 @@
-import type { Exchange } from '$lib/types';
+import type { Exchange, AnalysisResult } from '$lib/types';
 
 // Simple in-memory store for captured exchanges
 // Later we'll use SQLite database as planned
@@ -21,4 +21,20 @@ export function clearExchanges(): number {
 	const count = exchanges.length;
 	exchanges = [];
 	return count;
+}
+
+// Update an exchange with analysis results
+export function updateExchangeAnalysis(
+	exchangeId: string,
+	analysisResult: AnalysisResult
+): boolean {
+	const exchangeIndex = exchanges.findIndex((ex) => ex.id === exchangeId);
+	if (exchangeIndex !== -1) {
+		exchanges[exchangeIndex] = {
+			...exchanges[exchangeIndex],
+			analysis_result: analysisResult
+		};
+		return true;
+	}
+	return false;
 }

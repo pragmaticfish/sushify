@@ -6,7 +6,8 @@ import {
 	getExchanges,
 	addExchange,
 	getTotalExchanges,
-	clearExchanges
+	clearExchanges,
+	updateExchangeAnalysis
 } from '$lib/server/exchanges-store';
 import { analyzeLLMExchange, type CapturedExchange } from '$lib/server/analysis';
 import { checkAnalysisStatus } from '$lib/server/analysis-config';
@@ -61,9 +62,21 @@ async function triggerBackgroundAnalysis(exchange: Exchange) {
 		const analysis = await analyzeLLMExchange(capturedExchange);
 
 		if (analysis) {
-			// Analysis logging is already handled in analysis.ts
-			// TODO: Store analysis result with the exchange
-			// TODO: Broadcast analysis result via SSE
+			// Store analysis result with the exchange
+			const updateSuccess = updateExchangeAnalysis(exchange.id, analysis);
+			const updateMessage = `💾 Analysis stored for exchange ${exchange.id}: ${updateSuccess}`;
+			console.log(updateMessage);
+			logToAnalysisFile(updateMessage);
+
+			// Broadcast updated exchange with analysis via SSE
+			if (updateSuccess) {
+				const updatedExchange: Exchange = {
+					...exchange,
+					analysis_result: analysis
+				};
+				broadcastExchange(updatedExchange);
+				logToAnalysisFile(`📡 Broadcasted updated exchange with analysis: ${exchange.id}`);
+			}
 		} else {
 			const noAnalysisMessage = `⚠️ No analysis generated for exchange ${exchange.id}`;
 			console.log(noAnalysisMessage);
