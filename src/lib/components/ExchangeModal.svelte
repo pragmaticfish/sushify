@@ -33,20 +33,6 @@
 		return `${latencyMs}ms`;
 	}
 
-	// Get domain emoji
-	function getDomainEmoji(url: string | undefined): string {
-		if (!url) return '🌐';
-		try {
-			const hostname = new URL(url).hostname;
-			if (hostname.includes('openai.com')) return '🤖';
-			if (hostname.includes('anthropic.com')) return '🧠';
-			if (hostname.includes('google.com')) return '🔍';
-			return '🌐';
-		} catch {
-			return '🌐';
-		}
-	}
-
 	// Format JSON for display
 	function formatJson(jsonString: string | null | undefined): string {
 		if (!jsonString) return 'No data';
@@ -101,7 +87,7 @@
 				</div>
 				<div class="summary-item">
 					<span class="label">URL:</span>
-					<span class="value">{getDomainEmoji(exchange.url)} {formatUrl(exchange.url)}</span>
+					<span class="value">{formatUrl(exchange.url)}</span>
 				</div>
 				<div class="summary-item">
 					<span class="label">Status:</span>

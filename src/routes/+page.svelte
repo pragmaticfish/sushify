@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import { fade } from 'svelte/transition';
 	import { source } from 'sveltekit-sse';
 	import type { Exchange, CaptureStatusResponse } from '$lib/types';
 	import type { PageData } from './$types';
+	import Toggle from 'svelte-switcher';
 	import ExchangesTable from '$lib/components/ExchangesTable.svelte';
 
 	// Get loaded data from page load function
@@ -12,7 +14,6 @@
 	let sessionId = $state<string | null>(null);
 	let error = $state<string | null>(null);
 	let exchanges = $state<Exchange[]>(data.initialExchanges);
-	let loading = $state(false);
 	let analysisEnabled = $state(data.analysisEnabled);
 
 	// SSE connection
@@ -123,58 +124,53 @@
 	<header>
 		<h1>🍣 Sushify Dashboard</h1>
 		<p>Turn your prompt salad into sushi</p>
-		<div class="analysis-status">
-			{#if analysisEnabled}
-				<span
-					class="analysis-indicator enabled"
-					title="Prompt analysis enabled - LLM calls will be analyzed for quality"
-				>
-					🧠 Analysis: ON
-				</span>
-			{:else}
-				<span
-					class="analysis-indicator disabled"
-					title="Prompt analysis disabled - Set OPENAI_API_KEY environment variable to enable"
-				>
-					🧠 Analysis: OFF
-				</span>
-			{/if}
-		</div>
 	</header>
 
 	<main>
-		<div class="capture-control">
-			<button class="toggle-btn" class:active={capturing} onclick={toggleCapture}>
-				{capturing ? '🟢 Capturing ON' : '⚫ Capturing OFF'}
-			</button>
-
-			{#if error}
-				<p class="error">❌ {error}</p>
-			{/if}
-
-			<p class="status">
-				{#if capturing && sessionId}
-					✨ Proxy capturing enabled - Session: {sessionId}
-				{:else if capturing}
-					✨ Ready to capture HTTP traffic
-				{:else}
-					💤 Click to start proxy capture
-				{/if}
-			</p>
-		</div>
-
 		<div class="exchanges-section">
 			<div class="section-header">
-				<h2>📡 Captured Exchanges</h2>
-				<div class="exchange-stats">
-					{#if loading}
-						<span class="loading">🔄 Loading...</span>
-					{:else}
-						<span class="count">{exchanges.length} total</span>
+				<div class="section-title">
+					<h2>Captured Exchanges</h2>
+					<label
+						class="capture-toggle"
+						title={capturing
+							? 'Toggle to stop capturing network traffic'
+							: 'Toggle to start capturing network traffic'}
+					>
+						<Toggle
+							id="svelte-toggle"
+							name="theme-toggle"
+							onChange={toggleCapture}
+							checked={capturing}
+							defaultChecked={true}
+						></Toggle>
+					</label>
+				</div>
+				<div class="analysis-status-container">
+					{#if capturing}
+						<div class="analysis-status" transition:fade>
+							{#if analysisEnabled}
+								<span
+									class="analysis-indicator enabled"
+									title="Prompt analysis enabled - LLM calls will be analyzed for quality"
+								>
+									Analysis: ON
+								</span>
+							{:else}
+								<span
+									class="analysis-indicator disabled"
+									title="Prompt analysis disabled - Set OPENAI_API_KEY environment variable to enable"
+								>
+									Analysis: OFF
+								</span>
+							{/if}
+						</div>
 					{/if}
 				</div>
 			</div>
-
+			{#if error}
+				<p class="error">❌ {error}</p>
+			{/if}
 			{#if exchanges.length === 0}
 				<div class="empty-state">
 					<p>💤 No exchanges captured yet</p>
@@ -217,16 +213,20 @@
 	}
 
 	.analysis-status {
-		margin-top: 1rem;
+		/* No margin needed since container handles positioning */
 	}
 
 	.analysis-indicator {
-		display: inline-block;
+		display: inline-flex;
+		align-items: center;
 		padding: 0.5rem 1rem;
 		border-radius: 8px;
 		font-size: 0.9rem;
 		font-weight: 600;
 		cursor: help;
+		white-space: nowrap;
+		/* Ensure consistent vertical alignment */
+		line-height: 1;
 	}
 
 	.analysis-indicator.enabled {
@@ -239,40 +239,6 @@
 		background: #fed7d7;
 		color: #742a2a;
 		border: 1px solid #feb2b2;
-	}
-
-	.capture-control {
-		text-align: center;
-		margin-bottom: 3rem;
-	}
-
-	.toggle-btn {
-		background: #e2e8f0;
-		border: 2px solid #cbd5e0;
-		border-radius: 12px;
-		padding: 1rem 2rem;
-		font-size: 1.2rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all 0.2s ease;
-		margin-bottom: 1rem;
-	}
-
-	.toggle-btn:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-	}
-
-	.toggle-btn.active {
-		background: #48bb78;
-		border-color: #38a169;
-		color: white;
-	}
-
-	.status {
-		font-size: 1rem;
-		color: #4a5568;
-		margin: 0;
 	}
 
 	.error {
@@ -290,30 +256,50 @@
 	}
 
 	.section-header {
-		display: flex;
-		justify-content: space-between;
+		display: grid;
+		grid-template-columns: 1fr auto;
+		grid-template-areas: 'title status';
 		align-items: center;
 		margin-bottom: 1.5rem;
 		border-bottom: 2px solid #e2e8f0;
 		padding-bottom: 1rem;
+		/* Ensure consistent baseline alignment */
+		line-height: 1;
 	}
 
-	.section-header h2 {
+	.section-title {
+		grid-area: title;
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		/* Fine-tune vertical alignment */
+		line-height: 1;
+	}
+
+	.section-title h2 {
 		margin: 0;
 		color: #2d3748;
 		font-size: 1.5rem;
+		/* Adjust line-height for better vertical alignment */
+		line-height: 1.2;
+		/* Slight adjustment to align with toggle */
+		padding-bottom: 4px;
 	}
 
-	.exchange-stats {
+	.capture-toggle {
+		cursor: pointer;
+		/* Ensure toggle aligns properly */
 		display: flex;
-		gap: 1rem;
 		align-items: center;
 	}
 
-	.count,
-	.loading {
-		color: #718096;
-		font-size: 0.9rem;
+	.analysis-status-container {
+		grid-area: status;
+		/* Fixed width to prevent layout shift */
+		width: 120px;
+		display: flex;
+		justify-content: flex-end;
+		align-items: center;
 	}
 
 	.empty-state {
