@@ -166,13 +166,13 @@ function extractLLMConversation(exchange: CapturedExchange): string | null {
 	// Only include response if the request was successful (2xx status)
 	// For failed requests, just note that there was an error
 	if (exchange.response_body) {
-		const responseStatus = exchange.response_status || 0;
-		if (responseStatus >= 200 && responseStatus < 300) {
+		const responseStatus = exchange.response_status;
+		if (!!responseStatus && responseStatus >= 200 && responseStatus < 300) {
 			conversation += '=== RESPONSE BODY ===\n';
 			conversation += exchange.response_body + '\n\n';
 		} else {
-			conversation += '=== RESPONSE STATUS ===\n';
-			conversation += `${responseStatus} - Request failed (content omitted). Ignore the failure and analyze the request as usual.\n\n`;
+			conversation += '=== REQUEST OUTCOME ===\n';
+			conversation += `Request failed (response content omitted). Analyze the request for prompt issues as usual.\n\n`;
 		}
 	}
 

@@ -22,7 +22,8 @@
 	}
 
 	// Format status for display
-	function formatStatus(statusCode: number | undefined): string {
+	function formatStatus(statusCode: number | null | undefined): string {
+		if (statusCode === null) return 'ERROR';
 		if (!statusCode) return 'Unknown';
 		return `${statusCode}`;
 	}
@@ -91,7 +92,9 @@
 				</div>
 				<div class="summary-item">
 					<span class="label">Status:</span>
-					<span class="value">{formatStatus(exchange.response_status)}</span>
+					<span class="value" title={exchange.error_details || ''}
+						>{formatStatus(exchange.response_status)}</span
+					>
 				</div>
 				<div class="summary-item">
 					<span class="label">Latency:</span>
@@ -101,6 +104,15 @@
 
 			<!-- Content sections -->
 			<div class="modal-content">
+				{#if exchange.error_details}
+					<div class="section">
+						<h3>⚠️ Error Details</h3>
+						<div class="code-block">
+							<pre>{exchange.error_details}</pre>
+						</div>
+					</div>
+				{/if}
+
 				{#if exchange.analysis_result}
 					<div class="section">
 						<h3>🧠 Analysis</h3>

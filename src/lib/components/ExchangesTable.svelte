@@ -150,7 +150,8 @@
 	}
 
 	// Format status for display
-	function formatStatus(statusCode: number | undefined): string {
+	function formatStatus(statusCode: number | null | undefined): string {
+		if (statusCode === null) return '⚠️ ERROR';
 		if (!statusCode) return '❓ Unknown';
 		if (statusCode >= 200 && statusCode < 300) return `✅ ${statusCode}`;
 		if (statusCode >= 400 && statusCode < 500) return `❌ ${statusCode}`;
@@ -201,7 +202,7 @@
 					<td class="url-cell">
 						🤖 {exchange.url}
 					</td>
-					<td class="status-cell">
+					<td class="status-cell" title={exchange.error_details || ''}>
 						{formatStatus(exchange.response_status)}
 					</td>
 					<td class="latency-cell">

@@ -73,12 +73,13 @@ export type Exchange = {
 	scheme: string;
 	request_headers: Record<string, string>;
 	request_body: string | null;
-	response_status: number;
+	response_status: number | null;
 	response_headers: Record<string, string>;
 	response_body: string | null;
 	latency_ms: number;
 	captured_at: string;
 	server_received_at?: string; // Added by server
+	error_details?: string; // Raw error message for failed requests
 	analysis_result?: AnalysisResult | null; // Analysis result if available
 	// Note: is_ai_request removed - we only capture AI requests anyway
 };
