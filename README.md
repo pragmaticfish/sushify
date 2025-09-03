@@ -81,6 +81,33 @@ source ~/.zshrc
 
 **Cost:** ~$0.01-0.05 per prompt analysis using GPT-4.1
 
+### 🔧 Custom LLM Provider (Optional)
+
+By default, Sushify monitors calls to OpenAI, Anthropic, and Google AI APIs. To monitor a custom LLM provider (like Azure OpenAI, custom gateways, or self-hosted models), set:
+
+```bash
+export LLM_PROVIDER_BASE_URL=your-custom-ai-gateway.com
+```
+
+**Examples:**
+
+```bash
+
+# Custom gateway (domain only)
+export LLM_PROVIDER_BASE_URL=api.mygateway.com
+
+# Self-hosted with port
+export LLM_PROVIDER_BASE_URL=https://my-llm-server.internal:8080
+
+# Path-specific matching (only captures /v1/* endpoints)
+export LLM_PROVIDER_BASE_URL=https://api.mygateway.com/v1
+
+# Very specific path matching
+export LLM_PROVIDER_BASE_URL=https://my-ai-server.com/api/v2/chat
+```
+
+**Note:** This replaces the default AI domains entirely. Only POST requests with conversation content matching your specified URL pattern will be captured and analyzed.
+
 ## 🚀 JavaScript Runtime Support
 
 ### ✅ **Recommended: Modern Runtimes** (Zero Configuration)
@@ -136,6 +163,11 @@ Python applications work out-of-the-box with Sushify's language-agnostic proxy c
 - `HTTP_PROXY` / `HTTPS_PROXY` - Standard proxy configuration
 - `SSL_CERT_FILE` / `REQUESTS_CA_BUNDLE` / `CURL_CA_BUNDLE` - Certificate paths
 - Language-specific variables for Node.js, Python, etc.
+
+**User-configurable environment variables:**
+
+- `OPENAI_API_KEY` - Enable prompt analysis (optional)
+- `LLM_PROVIDER_BASE_URL` - Monitor custom AI provider instead of defaults (optional)
 
 **If your app's HTTP client respects these standard environment variables, it works automatically!** 🎯
 

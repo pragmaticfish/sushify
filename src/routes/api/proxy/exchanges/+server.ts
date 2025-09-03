@@ -44,7 +44,6 @@ async function triggerBackgroundAnalysis(exchange: Exchange) {
 			response_body: exchange.response_body || '',
 			request_headers: exchange.request_headers || {},
 			response_headers: exchange.response_headers || {},
-			is_ai_request: exchange.is_ai_request || false,
 			latency_ms: exchange.latency_ms || 0,
 			response_status: exchange.response_status
 		};
@@ -55,8 +54,7 @@ async function triggerBackgroundAnalysis(exchange: Exchange) {
 				url: capturedExchange.url,
 				method: capturedExchange.method,
 				hasRequestBody: !!capturedExchange.request_body,
-				hasResponseBody: !!capturedExchange.response_body,
-				isAiRequest: capturedExchange.is_ai_request
+				hasResponseBody: !!capturedExchange.response_body
 			})}`
 		);
 
@@ -118,27 +116,27 @@ export async function POST({ request }: RequestEvent) {
 		// Store the exchange
 		addExchange(exchange);
 
-		const logMessage = `📡 Received exchange: ${exchange.method} ${exchange.url} -> ${exchange.response_status} | AI: ${exchange.is_ai_request}`;
+		const logMessage = `📡 Received exchange: ${exchange.method} ${exchange.url} -> ${exchange.response_status}`;
 		console.log(logMessage);
 		logToAnalysisFile(logMessage);
 
 		// Broadcast to all connected SSE clients
 		broadcastExchange(exchange);
 
-		// Trigger LLM analysis if enabled and this is an AI request
+		// Trigger LLM analysis if enabled (all captured requests are AI requests)
 		const analysisEnabled = checkAnalysisStatus();
-		const statusMessage = `🔬 Analysis status - Enabled: ${analysisEnabled}, AI Request: ${exchange.is_ai_request}`;
+		const statusMessage = `🔬 Analysis status - Enabled: ${analysisEnabled}`;
 		console.log(statusMessage);
 		logToAnalysisFile(statusMessage);
 
-		if (analysisEnabled && exchange.is_ai_request) {
+		if (analysisEnabled) {
 			const triggerMessage = `🚀 TRIGGERING analysis for exchange ${exchange.id}`;
 			console.log(triggerMessage);
 			logToAnalysisFile(triggerMessage);
 			// Run analysis in background without blocking the response
 			triggerBackgroundAnalysis(exchange);
 		} else {
-			const skipMessage = `⏭️ Skipping analysis - Enabled: ${analysisEnabled}, AI: ${exchange.is_ai_request}`;
+			const skipMessage = `⏭️ Skipping analysis - analysis not enabled`;
 			console.log(skipMessage);
 			logToAnalysisFile(skipMessage);
 		}

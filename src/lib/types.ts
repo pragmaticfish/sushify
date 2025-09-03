@@ -78,9 +78,9 @@ export type Exchange = {
 	response_body: string | null;
 	latency_ms: number;
 	captured_at: string;
-	is_ai_request: boolean;
 	server_received_at?: string; // Added by server
 	analysis_result?: AnalysisResult | null; // Analysis result if available
+	// Note: is_ai_request removed - we only capture AI requests anyway
 };
 
 /**

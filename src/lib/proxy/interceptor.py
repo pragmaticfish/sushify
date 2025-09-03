@@ -24,12 +24,24 @@ SUSHIFY_SERVER_URL = os.getenv("SUSHIFY_DASHBOARD_URL", "http://localhost:7331")
 CAPTURE_STATUS_ENDPOINT = f"{SUSHIFY_SERVER_URL}/api/proxy/status"
 EXCHANGES_ENDPOINT = f"{SUSHIFY_SERVER_URL}/api/proxy/exchanges"
 
-# AI vendor domains to capture (expandable list)
-AI_DOMAINS = [
-    "api.openai.com",
-    "api.anthropic.com", 
-    "generativelanguage.googleapis.com"
+# AI base URLs to capture
+# Can be overridden with LLM_PROVIDER_BASE_URL environment variable
+DEFAULT_AI_BASE_URLS = [
+    "https://api.openai.com",
+    "https://api.anthropic.com", 
+    "https://generativelanguage.googleapis.com"
 ]
+
+# Check for custom LLM provider base URL
+CUSTOM_LLM_PROVIDER = os.getenv("LLM_PROVIDER_BASE_URL")
+if CUSTOM_LLM_PROVIDER:
+    # Use the custom provider as-is, just ensure it has a protocol
+    if not CUSTOM_LLM_PROVIDER.startswith('http'):
+        AI_BASE_URLS = [f"https://{CUSTOM_LLM_PROVIDER}"]
+    else:
+        AI_BASE_URLS = [CUSTOM_LLM_PROVIDER]
+else:
+    AI_BASE_URLS = DEFAULT_AI_BASE_URLS
 
 # Test domains for development (removed - only capture AI domains now)
 
@@ -85,16 +97,15 @@ def response(flow: http.HTTPFlow) -> None:
             "response_headers": dict(flow.response.headers),
             "response_body": get_safe_body(flow.response.text),
             "latency_ms": latency_ms,
-            "captured_at": time.strftime('%Y-%m-%d %H:%M:%S'),
-            "is_ai_request": is_ai_domain(flow.request.host)
+            "captured_at": time.strftime('%Y-%m-%d %H:%M:%S')
+            # Note: is_ai_request removed - we only capture AI requests anyway
         }
         
         # Send to Sushify server
         send_exchange_to_server(exchange)
         
-        # Color-coded logging
-        emoji = "🤖" if exchange["is_ai_request"] else "🧪"
-        print(f"{emoji} Captured: {flow.request.method} {flow.request.pretty_url} -> {flow.response.status_code} ({latency_ms}ms)")
+        # Log the captured request
+        print(f"🤖 Captured: {flow.request.method} {flow.request.pretty_url} -> {flow.response.status_code} ({latency_ms}ms)")
         
     except Exception as e:
         print(f"❌ Error in interceptor: {e}")
@@ -103,18 +114,22 @@ def response(flow: http.HTTPFlow) -> None:
 
 def should_capture_request(request) -> bool:
     """Determine if we should capture this request"""
-    host = request.host.lower()
-    path = request.path.lower()
-    
-    # Only capture AI domain requests that have conversation content (POST/PUT with body)
-    if is_ai_domain(host) and request.method in ['POST', 'PUT'] and request.content:
+    # Only capture AI requests that have conversation content (POST with body)
+    if matches_ai_base_url(request) and request.method == 'POST' and request.content:
         return True
     
     return False
 
-def is_ai_domain(host: str) -> bool:
-    """Check if this is an AI vendor domain"""
-    return any(domain in host.lower() for domain in AI_DOMAINS)
+def matches_ai_base_url(request) -> bool:
+    """Check if this request matches any AI base URL"""
+    request_url = request.pretty_url
+    
+    # Simple string matching - check if request URL starts with any AI base URL
+    for base_url in AI_BASE_URLS:
+        if request_url.startswith(base_url):
+            return True
+    
+    return False
 
 def get_safe_body(text: Optional[str]) -> str:
     """Get request/response body text (full content for LLM analysis)"""

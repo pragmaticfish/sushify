@@ -126,6 +126,22 @@ More info: https://github.com/pragmaticfish/sushify#readme
 		}
 
 		const userCommand = commandArgs.join(' ');
+
+		// Display LLM provider configuration
+		const customProvider = process.env.LLM_PROVIDER_BASE_URL;
+		if (customProvider) {
+			const trimmed = customProvider.trim();
+			if (!trimmed) {
+				console.error(`❌ LLM_PROVIDER_BASE_URL cannot be empty`);
+				process.exit(1);
+			}
+
+			console.log(`🔧 Using custom LLM provider: ${trimmed}`);
+			console.log(`   (Only POST requests matching this URL pattern will be captured)`);
+		} else {
+			console.log('🎯 Monitoring default AI providers: OpenAI, Anthropic, Google');
+		}
+
 		console.log(`🚀 Starting Sushify with command: ${userCommand}`);
 
 		try {

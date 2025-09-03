@@ -23,10 +23,6 @@
 	function getSushinessLevel(
 		exchange: Exchange
 	): 'red' | 'orange' | 'yellow' | 'green' | 'computing' | 'disabled' {
-		if (!exchange.is_ai_request) {
-			return 'disabled';
-		}
-
 		if (!analysisEnabled) {
 			return 'disabled';
 		}

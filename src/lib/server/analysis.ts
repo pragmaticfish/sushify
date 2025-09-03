@@ -147,7 +147,6 @@ export interface CapturedExchange {
 	response_body: string;
 	request_headers: Record<string, string>;
 	response_headers: Record<string, string>;
-	is_ai_request: boolean;
 	latency_ms: number;
 	response_status?: number;
 }
@@ -189,11 +188,7 @@ export async function analyzeLLMExchange(
 ): Promise<AnalysisResult | null> {
 	logToAnalysisFile(`🔍 analyzeLLMExchange called for exchange ${exchange.id}`);
 
-	// Only analyze AI requests
-	if (!exchange.is_ai_request) {
-		logToAnalysisFile(`⚠️ Skipping analysis - not an AI request: ${exchange.id}`);
-		return null;
-	}
+	// Note: No need to check is_ai_request - we only capture AI requests anyway
 
 	logToAnalysisFile(`📊 Attempting to extract conversation from exchange ${exchange.id}`);
 	const conversation = extractLLMConversation(exchange);
