@@ -15,6 +15,7 @@ const issueSchema = z.object({
 		'missing',
 		'over_complexity',
 		'bad_prompt_structure',
+		'bad_context_management',
 		'other'
 	]),
 	title: z.string().describe('A concise title for the issue'),

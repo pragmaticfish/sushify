@@ -67,6 +67,12 @@ Your task is to look at the instructions passed to the LLM as a whole:
 - Uses bad formatting (no titles and bullet points)
 - Poor organization and readability
 
+### Bad Context Management 
+While the other categories refer to instructions, this one is about the conversation history.
+- Conversation history contains duplicate messages that seem like a result of a bug in history management
+- Missing messages that break conversation flow/ coherence that seems like a result of context compaction errors that remove crucial conversation context
+- Conversation history that doesn't make logical sense when read sequentially
+
 ### Other Issues
 - Anything else not covered by the above categories
 

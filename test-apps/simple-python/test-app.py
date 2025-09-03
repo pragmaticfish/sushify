@@ -82,9 +82,9 @@ def main():
         make_request(url, description, method, data)
         
         # Wait between requests to see them appear gradually
-        if i < len(requests_to_make):
-            print("Waiting 3 seconds...")
-            time.sleep(3)
+        # if i < len(requests_to_make):
+        #     print("Waiting 3 seconds...")
+        #     time.sleep(3)
     
     print("Test complete! Check the Sushify dashboard for captured requests.")
     print("You should see:")

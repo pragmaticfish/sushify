@@ -474,11 +474,11 @@
 	}
 
 	.severity-badge.severity-medium {
-		background: #eab308;
+		background: #f97316; /* Orange */
 	}
 
 	.severity-badge.severity-low {
-		background: #3b82f6;
+		background: #eab308; /* Yellow */
 	}
 
 	.category-badge {
@@ -492,31 +492,35 @@
 	}
 
 	.category-badge.category-contradictory {
-		background: #dc2626;
+		background: #3d2245; /* Dark Purple */
 	}
 
 	.category-badge.category-vague {
-		background: #f59e0b;
+		background: #222645; /* Dark Blue */
 	}
 
 	.category-badge.category-misleading {
-		background: #ef4444;
+		background: #222645; /* Dark Blue */
 	}
 
 	.category-badge.category-missing {
-		background: #8b5cf6;
+		background: #222645; /* Dark Blue */
 	}
 
 	.category-badge.category-over_complexity {
-		background: #06b6d4;
+		background: #222645; /* Dark Blue */
 	}
 
 	.category-badge.category-bad_prompt_structure {
-		background: #ec4899;
+		background: #452238; /* Dark Maroon */
+	}
+
+	.category-badge.category-bad_context_management {
+		background: #000000; /* Black */
 	}
 
 	.category-badge.category-other {
-		background: #6b7280;
+		background: #403e3f; /* Very Dark Grey */
 	}
 
 	.issue-body {
