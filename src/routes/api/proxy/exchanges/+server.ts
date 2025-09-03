@@ -45,7 +45,8 @@ async function triggerBackgroundAnalysis(exchange: Exchange) {
 			request_headers: exchange.request_headers || {},
 			response_headers: exchange.response_headers || {},
 			is_ai_request: exchange.is_ai_request || false,
-			latency_ms: exchange.latency_ms || 0
+			latency_ms: exchange.latency_ms || 0,
+			response_status: exchange.response_status
 		};
 
 		logToAnalysisFile(

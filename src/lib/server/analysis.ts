@@ -149,6 +149,7 @@ export interface CapturedExchange {
 	response_headers: Record<string, string>;
 	is_ai_request: boolean;
 	latency_ms: number;
+	response_status?: number;
 }
 
 // Extract LLM conversation from exchange - API agnostic approach
@@ -157,15 +158,23 @@ function extractLLMConversation(exchange: CapturedExchange): string | null {
 		return null;
 	}
 
-	// Just include the raw request and response for analysis
+	// Include the request body for analysis
 	let conversation = '';
 
 	conversation += '=== REQUEST BODY ===\n';
 	conversation += exchange.request_body + '\n\n';
 
+	// Only include response if the request was successful (2xx status)
+	// For failed requests, just note that there was an error
 	if (exchange.response_body) {
-		conversation += '=== RESPONSE BODY ===\n';
-		conversation += exchange.response_body + '\n\n';
+		const responseStatus = exchange.response_status || 0;
+		if (responseStatus >= 200 && responseStatus < 300) {
+			conversation += '=== RESPONSE BODY ===\n';
+			conversation += exchange.response_body + '\n\n';
+		} else {
+			conversation += '=== RESPONSE STATUS ===\n';
+			conversation += `${responseStatus} - Request failed (content omitted). Ignore the failure and analyze the request as usual.\n\n`;
+		}
 	}
 
 	conversation += '=== API ENDPOINT ===\n';

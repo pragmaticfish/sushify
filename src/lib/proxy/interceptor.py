@@ -28,14 +28,10 @@ EXCHANGES_ENDPOINT = f"{SUSHIFY_SERVER_URL}/api/proxy/exchanges"
 AI_DOMAINS = [
     "api.openai.com",
     "api.anthropic.com", 
-    "api.cohere.ai",
-    "api.together.xyz",
-    "openrouter.ai",
-    "api.replicate.com"
+    "generativelanguage.googleapis.com"
 ]
 
-# Test domains for development
-TEST_DOMAINS = ["httpbin.org", "jsonplaceholder.typicode.com", "api.github.com"]
+# Test domains for development (removed - only capture AI domains now)
 
 def request(flow: http.HTTPFlow) -> None:
     """Called when request is made"""
@@ -110,12 +106,8 @@ def should_capture_request(request) -> bool:
     host = request.host.lower()
     path = request.path.lower()
     
-    # For now, only capture OpenAI responses endpoint for analysis
-    if is_ai_domain(host) and "/v1/responses" in path:
-        return True
-    
-    # Capture test domains for development
-    if any(domain in host for domain in TEST_DOMAINS):
+    # Only capture AI domain requests that have conversation content (POST/PUT with body)
+    if is_ai_domain(host) and request.method in ['POST', 'PUT'] and request.content:
         return True
     
     return False
@@ -125,15 +117,11 @@ def is_ai_domain(host: str) -> bool:
     return any(domain in host.lower() for domain in AI_DOMAINS)
 
 def get_safe_body(text: Optional[str]) -> str:
-    """Get request/response body safely, truncate if too large"""
+    """Get request/response body text (full content for LLM analysis)"""
     if not text:
         return ""
     
-    # Truncate large bodies to prevent memory issues
-    max_length = 5000  # Increased for AI responses which can be longer
-    if len(text) > max_length:
-        return text[:max_length] + "... [truncated]"
-    
+    # Return full content - we have 1M token context window for analysis
     return text
 
 def is_capture_enabled() -> bool:

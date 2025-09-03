@@ -250,8 +250,8 @@
 
 	.exchange-summary {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-		gap: 16px;
+		grid-template-columns: auto 2fr auto auto;
+		gap: 2.5em;
 		padding: 24px 32px;
 		background: #f8fafc;
 		border-bottom: 1px solid #e2e8f0;
@@ -276,6 +276,8 @@
 		font-weight: 500;
 		color: #1f2937;
 		font-family: 'Monaco', 'Menlo', monospace;
+		word-break: break-all;
+		overflow-wrap: break-word;
 	}
 
 	.modal-content {

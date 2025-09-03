@@ -153,25 +153,6 @@
 		return new Date(timestamp).toLocaleTimeString();
 	}
 
-	// Format URL for display
-	function formatUrl(url: string | undefined): string {
-		if (!url) return '-';
-		try {
-			const urlObj = new URL(url);
-			return `${getDomainEmoji(urlObj.hostname)} ${urlObj.pathname}`;
-		} catch {
-			return `🌐 ${url}`;
-		}
-	}
-
-	// Get domain emoji
-	function getDomainEmoji(hostname: string): string {
-		if (hostname.includes('openai.com')) return '🤖';
-		if (hostname.includes('anthropic.com')) return '🧠';
-		if (hostname.includes('google.com')) return '🔍';
-		return '🌐';
-	}
-
 	// Format status for display
 	function formatStatus(statusCode: number | undefined): string {
 		if (!statusCode) return '❓ Unknown';
@@ -222,7 +203,7 @@
 						{formatTime(exchange.server_received_at)}
 					</td>
 					<td class="url-cell">
-						{formatUrl(exchange.url)}
+						🤖 {exchange.url}
 					</td>
 					<td class="status-cell">
 						{formatStatus(exchange.response_status)}
