@@ -14,10 +14,22 @@ import traceback
 from mitmproxy import http
 from typing import Optional
 
-# Debug logging for development
-print("🔥 SUSHIFY INTERCEPTOR LOADED!")
-with open("/tmp/sushify-debug.log", "a") as f:
-    f.write("🔥 SUSHIFY INTERCEPTOR LOADED!\n")
+# Set up logging
+SUSHIFY_SESSION_DIR = os.getenv("SUSHIFY_SESSION_DIR")
+if not SUSHIFY_SESSION_DIR:
+    raise Exception("SUSHIFY_SESSION_DIR environment variable not set")
+    
+INTERCEPTOR_LOG = os.path.join(SUSHIFY_SESSION_DIR, "interceptor.log")
+
+def log_message(level, message):
+    """Write structured log message to interceptor.log"""
+    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+    log_line = f"{timestamp} {level:5} {message}\n"
+    with open(INTERCEPTOR_LOG, "a") as f:
+        f.write(log_line)
+
+# Log interceptor start
+log_message("INFO", "Interceptor loaded successfully")
 
 # Configuration
 SUSHIFY_SERVER_URL = os.getenv("SUSHIFY_DASHBOARD_URL", "http://localhost:7331")  # SvelteKit dashboard server
@@ -47,18 +59,16 @@ else:
 
 def request(flow: http.HTTPFlow) -> None:
     """Called when request is made"""
-    print(f"🚀 REQUEST INTERCEPTED: {flow.request.method} {flow.request.pretty_url}")
-    with open("/tmp/sushify-debug.log", "a") as f:
-        f.write(f"🚀 REQUEST INTERCEPTED: {flow.request.method} {flow.request.pretty_url}\n")
+    log_message("DEBUG", f"Request intercepted: {flow.request.method} {flow.request.pretty_url}")
     
     # Log request body for debugging (useful for LLM analysis)
     if flow.request.content:
         try:
             body_text = flow.request.content.decode('utf-8')
-            with open("/tmp/sushify-debug.log", "a") as f:
-                f.write(f"📋 REQUEST BODY: {body_text}\n")
+            body_preview = body_text[:200] + "..." if len(body_text) > 200 else body_text
+            log_message("DEBUG", f"Request body: {len(body_text)} chars")
         except UnicodeDecodeError:
-            pass  # Skip binary content
+            log_message("DEBUG", f"Request body: {len(flow.request.content)} bytes (binary)")
     
     # Add timestamp for latency calculation
     flow.metadata["sushify_start_time"] = time.time()
@@ -88,12 +98,11 @@ def create_exchange_base(flow: http.HTTPFlow) -> dict:
 
 def response(flow: http.HTTPFlow) -> None:
     """Called when response is received - captures complete exchange"""
-    print(f"📥 RESPONSE INTERCEPTED: {flow.request.method} {flow.request.pretty_url} -> {flow.response.status_code}")
-    with open("/tmp/sushify-debug.log", "a") as f:
-        f.write(f"📥 RESPONSE INTERCEPTED: {flow.request.method} {flow.request.pretty_url} -> {flow.response.status_code}\n")
+    log_message("DEBUG", f"Response received: {flow.request.method} {flow.request.pretty_url} ({flow.response.status_code}, {int((time.time() - flow.metadata.get('sushify_start_time', time.time())) * 1000)}ms)")
     
     try:
         if not should_capture_flow(flow):
+            log_message("DEBUG", f"Skipping response: {flow.request.method} {flow.request.pretty_url} (capture disabled or not AI domain)")
             return
         
         # Create exchange object with response data
@@ -108,11 +117,11 @@ def response(flow: http.HTTPFlow) -> None:
         send_exchange_to_server(exchange)
         
         # Log the captured request
-        print(f"🤖 Captured: {flow.request.method} {flow.request.pretty_url} -> {flow.response.status_code} ({exchange['latency_ms']}ms)")
+        log_message("INFO", f"Exchange captured: {flow.request.method} {flow.request.pretty_url} ({flow.response.status_code}, {exchange['latency_ms']}ms)")
         
     except Exception as e:
-        print(f"❌ Error in interceptor: {e}")
-        print(f"❌ Full traceback: {traceback.format_exc()}")
+        log_message("ERROR", f"Error in interceptor: {e}")
+        log_message("DEBUG", f"Full traceback: {traceback.format_exc()}")
         # Don't block the request if something goes wrong
 
 def should_capture_request(request) -> bool:
@@ -153,7 +162,7 @@ def is_capture_enabled() -> bool:
         # If we can't reach the server, assume capturing is disabled
         pass
     except Exception as e:
-        print(f"⚠️ Error checking capture status: {e}")
+        log_message("WARN", f"Error checking capture status: {e}")
     
     return False
 
@@ -168,13 +177,13 @@ def send_exchange_to_server(exchange: dict) -> None:
         )
         
         if response.status_code != 200:
-            print(f"⚠️ Server returned {response.status_code} for exchange {exchange['id']}")
+            log_message("WARN", f"Server returned {response.status_code} for exchange {exchange['id']} to {EXCHANGES_ENDPOINT}")
             
     except requests.RequestException as e:
-        print(f"❌ Failed to send exchange to server: {e}")
+        log_message("ERROR", f"Failed to send exchange to server: {e}")
         # Don't block the original request
     except Exception as e:
-        print(f"❌ Unexpected error sending exchange: {e}")
+        log_message("ERROR", f"Unexpected error sending exchange: {e}")
 
 def get_error_description(error) -> str:
     """Get human-readable error description"""
@@ -195,9 +204,7 @@ def get_error_description(error) -> str:
 def error(flow: http.HTTPFlow) -> None:
     """Called when a flow encounters an error (timeout, connection failed, etc.)"""
     error_desc = get_error_description(flow.error)
-    print(f"⚠️ ERROR: {flow.request.method} {flow.request.pretty_url} - {error_desc}")
-    with open("/tmp/sushify-debug.log", "a") as f:
-        f.write(f"⚠️ ERROR: {flow.request.method} {flow.request.pretty_url} - {error_desc}\n")
+    log_message("WARN", f"Request error: {flow.request.method} {flow.request.pretty_url} - {error_desc}")
     
     try:
         if not should_capture_flow(flow):
@@ -216,11 +223,11 @@ def error(flow: http.HTTPFlow) -> None:
         send_exchange_to_server(exchange)
         
         # Log the captured error
-        print(f"🤖 Captured error: {flow.request.method} {flow.request.pretty_url} - {error_desc} ({exchange['latency_ms']}ms)")
+        log_message("INFO", f"Error exchange captured: {flow.request.method} {flow.request.pretty_url} - {error_desc} ({exchange['latency_ms']}ms)")
         
     except Exception as e:
-        print(f"❌ Error in error handler: {e}")
-        print(f"❌ Full traceback: {traceback.format_exc()}")
+        log_message("ERROR", f"Error in error handler: {e}")
+        log_message("DEBUG", f"Full traceback: {traceback.format_exc()}")
 
 # mitmproxy addon registration
 addons = []

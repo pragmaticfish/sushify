@@ -9,18 +9,36 @@ import { spawn, execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { platform, homedir } from 'os';
-import { existsSync, writeFileSync, unlinkSync, mkdirSync } from 'fs';
+import { existsSync, writeFileSync, unlinkSync, mkdirSync, symlinkSync } from 'fs';
 import { PORTS, getDashboardUrl, getProxyUrl, getDashboardApiUrl } from '../config/ports.js';
 import { nanoid } from 'nanoid';
+import { isCertificateInstalled } from './certificate-manager.js';
+import type { ChildProcess } from 'child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Create a session directory with timestamp-based naming
+ */
+function createSessionDirectory(logsDir: string): string {
+	const now = new Date();
+	const year = now.getFullYear();
+	const month = String(now.getMonth() + 1).padStart(2, '0');
+	const day = String(now.getDate()).padStart(2, '0');
+	const hours = String(now.getHours()).padStart(2, '0');
+	const minutes = String(now.getMinutes()).padStart(2, '0');
+	const seconds = String(now.getSeconds()).padStart(2, '0');
+
+	const logDirKey = `${year}-${month}-${day}__${hours}-${minutes}-${seconds}`;
+	return join(logsDir, `session_${logDirKey}`);
+}
 
 /**
  * Check if a port is in use using OS-specific commands
  * @param {number} port - Port to check
  * @returns {Promise<boolean>} True if port is in use
  */
-async function checkPortInUse(port) {
+async function checkPortInUse(port: number): Promise<boolean> {
 	try {
 		const currentPlatform = platform();
 		let command;
@@ -86,8 +104,14 @@ function getTempComposeFile() {
 }
 
 // Process management with proper typing
-/** @type {{ dashboard: import('child_process').ChildProcess | null, proxy: import('child_process').ChildProcess | null, userApp: import('child_process').ChildProcess | null, tempComposeFile: string | null }} */
-let processes = {
+interface ProcessManager {
+	dashboard: ChildProcess | null;
+	proxy: ChildProcess | null;
+	userApp: ChildProcess | null;
+	tempComposeFile: string | null;
+}
+
+const processes: ProcessManager = {
 	dashboard: null,
 	proxy: null,
 	userApp: null,
@@ -180,7 +204,7 @@ function startDashboard() {
 	return new Promise((resolve, reject) => {
 		console.log('🎛️  Starting Sushify dashboard...');
 
-		const projectRoot = join(__dirname, '../../../');
+		const projectRoot = join(__dirname, '../../../../');
 		const buildDir = join(projectRoot, 'build');
 
 		// Check if build directory exists (for installed packages)
@@ -229,10 +253,10 @@ function startDashboard() {
 }
 
 function startProductionServer(
-	/** @type {(value: import('child_process').ChildProcess) => void} */ resolve,
-	/** @type {(reason: Error) => void} */ reject,
-	/** @type {string} */ projectRoot
-) {
+	resolve: (value: ChildProcess) => void,
+	reject: (reason: Error) => void,
+	projectRoot: string
+): void {
 	// Start production server using adapter-node
 	const server = spawn('node', ['build'], {
 		cwd: projectRoot,
@@ -249,7 +273,7 @@ function startProductionServer(
 	let dashboardReady = false;
 	let startupOutput = '';
 
-	const checkForReady = (/** @type {string} */ output) => {
+	const checkForReady = (output: string) => {
 		startupOutput += output;
 		// Look for SvelteKit adapter-node server startup indicators
 		if (
@@ -372,7 +396,11 @@ function startProxy() {
  * @param {string[]} dockerServices - Services to auto-configure for proxy
  * @returns {Promise<import('child_process').ChildProcess>}
  */
-function startUserApp(command, dockerMode = false, dockerServices = []) {
+function startUserApp(
+	command: string,
+	dockerMode = false,
+	dockerServices: string[] = []
+): Promise<ChildProcess> {
 	return new Promise((resolve, reject) => {
 		console.log(`🚀 Starting user application: ${command}`);
 
@@ -393,11 +421,15 @@ function startUserApp(command, dockerMode = false, dockerServices = []) {
  * @param {Function} resolve - Promise resolver
  * @param {Function} reject - Promise rejector
  */
-function startLocalApp(command, resolve, reject) {
+function startLocalApp(
+	command: string,
+	resolve: (value: ChildProcess) => void,
+	reject: (reason: Error) => void
+): void {
 	// Parse command (handle quoted arguments)
 	const args = command.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
 	const cmd = args[0];
-	const cmdArgs = args.slice(1).map((arg) => arg.replace(/^"|"$/g, ''));
+	const cmdArgs = args.slice(1).map((arg: string) => arg.replace(/^"|"$/g, ''));
 
 	if (!cmd) {
 		reject(new Error('Invalid command provided'));
@@ -455,7 +487,7 @@ async function checkForDockerMisconfiguration() {
 	try {
 		// Check if we have any exchanges captured yet
 		const response = await fetch(`${getDashboardApiUrl()}/api/proxy/exchanges`);
-		const data = /** @type {{ total?: number }} */ (await response.json());
+		const data = /** @type {{ total?: number }} */ await response.json();
 
 		// If no exchanges captured and compose files exist, suggest --docker flag
 		if (data.total === 0 && hasDockerComposeFiles()) {
@@ -507,7 +539,12 @@ function validateDockerSetup() {
  * @param {Function} reject - Promise rejector
  * @param {string[]} autoConfigServices - Services to auto-configure for proxy
  */
-function startDockerComposeApp(command, resolve, reject, autoConfigServices = []) {
+function startDockerComposeApp(
+	command: string,
+	resolve: (value: ChildProcess) => void,
+	reject: (reason: Error) => void,
+	autoConfigServices: string[] = []
+): void {
 	// Validate Docker setup first
 	if (!validateDockerSetup()) {
 		console.error('');
@@ -593,7 +630,7 @@ services:`;
 	// Parse and execute the modified command
 	const args = dockerCommand.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
 	const cmd = args[0];
-	const cmdArgs = args.slice(1).map((arg) => arg.replace(/^"|"$/g, ''));
+	const cmdArgs = args.slice(1).map((arg: string) => arg.replace(/^"|"$/g, ''));
 
 	if (!cmd) {
 		reject(new Error('Invalid Docker Compose command provided'));
@@ -705,13 +742,54 @@ function openDashboard() {
 
 /**
  * Main start function
- * @param {string} userCommand - The user's application command to start with proxy
- * @param {boolean} dockerMode - Force Docker Compose mode
- * @param {string[]} dockerServices - Services to auto-configure for proxy
  */
-export default async function startSushify(userCommand, dockerMode = false, dockerServices = []) {
+export async function startSushify(
+	userCommand: string,
+	dockerMode = false,
+	dockerServices: string[] = []
+): Promise<void> {
 	console.log('🍣 Sushify - Turn your prompt salad into sushi');
 	console.log('');
+
+	// Create session directory and set up logging
+	const sushifyHome = join(homedir(), '.sushify');
+	const logsDir = join(sushifyHome, 'logs');
+
+	// Create session directory
+	const sessionDir = createSessionDirectory(logsDir);
+
+	try {
+		// Ensure session directory exists
+		mkdirSync(sessionDir, { recursive: true });
+
+		// Pre-create log files to verify writability
+		const serverLogPath = join(sessionDir, 'server.log');
+		const interceptorLogPath = join(sessionDir, 'interceptor.log');
+
+		// Create empty log files (this tests writability)
+		writeFileSync(serverLogPath, '');
+		writeFileSync(interceptorLogPath, '');
+
+		// Set up symlink to latest session
+		const latestLink = join(logsDir, 'latest');
+		try {
+			if (existsSync(latestLink)) {
+				unlinkSync(latestLink);
+			}
+			symlinkSync(sessionDir, latestLink);
+		} catch {
+			// Symlink creation might fail on some systems, that's okay
+		}
+
+		// Set environment variable for dashboard and interceptor
+		process.env.SUSHIFY_SESSION_DIR = sessionDir;
+	} catch (error) {
+		console.error('❌ Failed to create session directory:');
+		console.error(`   ${error instanceof Error ? error.message : String(error)}`);
+		console.error('');
+		console.error('💡 Please check that ~/.sushify directory is writable');
+		process.exit(1);
+	}
 
 	try {
 		// 1. Check if Sushify is already running
@@ -762,12 +840,16 @@ export default async function startSushify(userCommand, dockerMode = false, dock
 		console.log('🔍 Checking dependencies...');
 		const depsOk = await checkDependencies();
 		if (!depsOk) {
+			console.error('❌ Dependencies check failed');
 			process.exit(1);
 		}
 
+		// Display session directory
+		console.log('📁 Session logs:', sessionDir);
+		console.log('');
+
 		// 3. Check if certificate is set up for HTTPS support
 		try {
-			const { isCertificateInstalled } = await import('../proxy/certificate-manager.js');
 			if (!(await isCertificateInstalled())) {
 				console.error('❌ HTTPS certificate not installed');
 				console.error('');
@@ -805,11 +887,13 @@ export default async function startSushify(userCommand, dockerMode = false, dock
 		await Promise.all([startDashboard(), startProxy()]);
 
 		// 6. Wait for dashboard to be fully ready
+		// Wait for dashboard to be ready
 		await waitForDashboardReady();
 
 		console.log('');
 
 		// 6. Start user application (now that everything is ready)
+		console.log('🚀 Starting user application');
 		await startUserApp(userCommand, dockerMode, dockerServices);
 
 		// 7. Open browser

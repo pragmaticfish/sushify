@@ -107,4 +107,5 @@ async function startProxy() {
 	});
 }
 
-startProxy().catch(console.error);
+// Export the function for use by other modules
+export { startProxy };

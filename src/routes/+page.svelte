@@ -2,16 +2,14 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { source } from 'sveltekit-sse';
-	import type { Exchange, CaptureStatusResponse } from '$lib/types';
+	import type { Exchange } from '$lib/types';
 	import type { PageData } from './$types';
 	import Toggle from 'svelte-switcher';
 	import ExchangesTable from '$lib/components/ExchangesTable.svelte';
 
-	// Get loaded data from page load function
 	let { data }: { data: PageData } = $props();
 
-	let capturing = $state(false);
-	let sessionId = $state<string | null>(null);
+	let capturing = $state(data.capturing);
 	let error = $state<string | null>(null);
 	let exchanges = $state<Exchange[]>(data.initialExchanges);
 	let analysisEnabled = $state(data.analysisEnabled);
@@ -19,9 +17,8 @@
 	// SSE connection
 	let sseConnection: ReturnType<typeof source> | null = null;
 
-	// Check capture status and setup SSE on page load
+	// Setup SSE on page load
 	onMount(() => {
-		checkCaptureStatus();
 		setupSSE();
 	});
 
@@ -72,49 +69,28 @@
 		});
 	}
 
-	async function checkCaptureStatus() {
-		try {
-			const response = await fetch('/api/proxy/status');
-			if (response.ok) {
-				const data: CaptureStatusResponse = await response.json();
-				capturing = data.capturing;
-				sessionId = data.sessionId;
-			}
-		} catch (err) {
-			console.error('Failed to check capture status:', err);
-		}
-	}
-
 	async function toggleCapture() {
-		const action = capturing ? 'disable' : 'enable';
 		error = null;
+		const previousState = capturing;
 
 		try {
 			const response = await fetch('/api/proxy/status', {
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ action })
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ action: capturing ? 'disable' : 'enable' })
 			});
 
 			if (response.ok) {
 				const data = await response.json();
 				capturing = data.capturing;
-				sessionId = data.sessionId;
-
 				console.log(`🍣 Sushify capturing: ${capturing ? 'ON' : 'OFF'}`);
-
-				if (capturing) {
-					console.log(`🟢 Started proxy capture - Session: ${sessionId}`);
-				} else {
-					console.log('🔴 Stopped proxy capture');
-				}
 			} else {
-				throw new Error(`Server returned ${response.status}`);
+				const errorText = await response.text();
+				throw new Error(`Server returned ${response.status}: ${errorText}`);
 			}
 		} catch (err) {
-			error = `Failed to ${action} capture: ${err instanceof Error ? err.message : String(err)}`;
+			capturing = previousState; // Revert on error
+			error = `Failed to toggle capture: ${err instanceof Error ? err.message : String(err)}`;
 			console.error('❌', error);
 		}
 	}
@@ -140,10 +116,9 @@
 						<Toggle
 							id="svelte-toggle"
 							name="theme-toggle"
-							onChange={toggleCapture}
 							checked={capturing}
-							defaultChecked={true}
-						></Toggle>
+							onChange={toggleCapture}
+						/>
 					</label>
 				</div>
 				<div class="analysis-status-container">
@@ -210,10 +185,6 @@
 		font-size: 1.1rem;
 		color: #718096;
 		margin: 0.5rem 0 0 0;
-	}
-
-	.analysis-status {
-		/* No margin needed since container handles positioning */
 	}
 
 	.analysis-indicator {

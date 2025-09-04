@@ -90,8 +90,6 @@ export type Exchange = {
  */
 export type CaptureStatusResponse = {
 	capturing: boolean;
-	sessionId: string | null;
-	startedAt: Date | null;
 };
 
 export type ExchangesResponse = {
@@ -106,7 +104,6 @@ export type CaptureToggleRequest = {
 export type CaptureToggleResponse = {
 	success: true;
 	capturing: boolean;
-	sessionId: string | null;
 	message: string;
 };
 

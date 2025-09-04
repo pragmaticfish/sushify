@@ -8,11 +8,12 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { startSushify } from '../src/lib/cli/start-command.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Get version from package.json
-function getVersion() {
+function getVersion(): string {
 	try {
 		const packagePath = join(__dirname, '..', 'package.json');
 		const { version } = JSON.parse(readFileSync(packagePath, 'utf8'));
@@ -70,7 +71,7 @@ More info: https://github.com/pragmaticfish/sushify#readme
 
 		try {
 			const { spawn } = await import('child_process');
-			const setupPath = join(__dirname, '..', 'scripts', 'setup-proxy.js');
+			const setupPath = join(__dirname, '..', 'src', 'lib', 'cli', 'setup-proxy.js');
 
 			const setup = spawn('node', [setupPath], {
 				stdio: 'inherit'
@@ -145,7 +146,6 @@ More info: https://github.com/pragmaticfish/sushify#readme
 		console.log(`🚀 Starting Sushify with command: ${userCommand}`);
 
 		try {
-			const { default: startSushify } = await import('../build/lib/cli/start-command.js');
 			await startSushify(userCommand, dockerMode, dockerServices);
 		} catch (error) {
 			console.error('❌ Failed to start Sushify:', error.message);
@@ -160,7 +160,7 @@ More info: https://github.com/pragmaticfish/sushify#readme
 		console.log('🧹 Cleaning up Sushify certificates and data...');
 
 		try {
-			const { removeCertificate } = await import('../src/lib/proxy/certificate-manager.js');
+			const { removeCertificate } = await import('../src/lib/cli/certificate-manager.js');
 			await removeCertificate();
 			console.log('✅ Cleanup complete');
 		} catch (error) {

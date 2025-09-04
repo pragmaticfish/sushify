@@ -31,10 +31,9 @@
 		"claude"
 	],
 	"bin": {
-		"sushify": "./bin/sushify.js"
+		"sushify": "./build/bin/sushify.js"
 	},
 	"files": [
-		"bin/",
 		"build/",
 		"scripts/",
 		"README.md",
@@ -49,7 +48,7 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "husky",
-		"postinstall": "node scripts/setup-proxy.js",
+		"postinstall": "node build/src/lib/cli/setup-proxy.js",
 		"prepublishOnly": "npm run build",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
@@ -60,8 +59,8 @@
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
 		"test:e2e": "playwright test",
-		"test:python": "npm run build && cd test-apps/simple-python && ../../bin/sushify.js start \"python test-app.py\"",
-		"test:docker": "npm run build && cd test-apps/docker-compose && ../../bin/sushify.js start --docker=backend \"docker compose up\""
+		"test:python": "npm run build && cd test-apps/simple-python && ../../build/bin/sushify.js start \"python test-app.py\"",
+		"test:docker": "npm run build && cd test-apps/docker-compose && ../../build/bin/sushify.js start --docker=backend \"docker compose up\""
 	},
 	"lint-staged": {
 		"*.{js,ts,svelte}": [
@@ -92,6 +91,7 @@
 		"@playwright/test": "^1.49.1",
 		"@types/node": "^24.3.0",
 		"@vitest/browser": "^3.2.3",
+		"esbuild": "^0.25.9",
 		"eslint": "^9.18.0",
 		"eslint-config-prettier": "^10.0.1",
 		"eslint-plugin-svelte": "^3.0.0",

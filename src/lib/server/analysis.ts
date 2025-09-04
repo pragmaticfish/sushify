@@ -3,24 +3,11 @@
  */
 
 import { callModel } from './llm';
-import { appendFileSync } from 'fs';
 import type { AnalysisResult } from '$lib/types';
 import { analysisOutputSchema, NO_ISSUES_FOUND } from '$lib/types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
-
-// Analysis debug log file
-const ANALYSIS_LOG_FILE = '/tmp/sushify-analysis.log';
-
-function logToAnalysisFile(message: string) {
-	const timestamp = new Date().toISOString();
-	const logLine = `[${timestamp}] ${message}\n`;
-	try {
-		appendFileSync(ANALYSIS_LOG_FILE, logLine);
-	} catch (error) {
-		console.error('Failed to write to analysis log:', error);
-	}
-}
+import { getLogger } from '../utils/logging.js';
 
 // Analysis prompt and schema
 const ANALYSIS_SYSTEM_PROMPT = `
@@ -192,31 +179,25 @@ function extractLLMConversation(exchange: CapturedExchange): string | null {
 export async function analyzeLLMExchange(
 	exchange: CapturedExchange
 ): Promise<AnalysisResult | null> {
-	logToAnalysisFile(`🔍 analyzeLLMExchange called for exchange ${exchange.id}`);
-
 	// Note: No need to check is_ai_request - we only capture AI requests anyway
 
-	logToAnalysisFile(`📊 Attempting to extract conversation from exchange ${exchange.id}`);
+	const logger = getLogger();
+	logger.info(`[analysis] Extracting conversation from exchange ${exchange.id}`);
+
 	const conversation = extractLLMConversation(exchange);
 	if (!conversation) {
-		const message = `⚠️ Could not extract conversation from exchange ${exchange.id}`;
-		console.log(message);
-		logToAnalysisFile(message);
-		logToAnalysisFile(`📋 Request body length: ${exchange.request_body?.length || 0}`);
-		logToAnalysisFile(
-			`📋 Request body preview: ${exchange.request_body?.substring(0, 200) || 'empty'}`
+		logger.warn(
+			`[analysis] Could not extract conversation from exchange ${exchange.id} (request body length: ${exchange.request_body?.length || 0})`
 		);
 		return null;
 	}
 
-	const analyzeMessage = `🔍 Analyzing LLM exchange ${exchange.id}`;
-	console.log(analyzeMessage);
-	logToAnalysisFile(analyzeMessage);
-	logToAnalysisFile(`📝 Conversation extracted (${conversation.length} chars):`);
-	logToAnalysisFile(conversation); // Log the FULL conversation
+	logger.info(
+		`[analysis] Starting LLM analysis for exchange ${exchange.id} (conversation length: ${conversation.length})`
+	);
 
 	try {
-		logToAnalysisFile(`🤖 Calling real LLM for analysis`);
+		logger.debug(`[analysis] Calling LLM for analysis of exchange ${exchange.id}`);
 		const rawAnalysis = await callModel({
 			input: [
 				{ role: 'system', content: ANALYSIS_SYSTEM_PROMPT },
@@ -232,14 +213,16 @@ export async function analyzeLLMExchange(
 		// Transform raw LLM output to enhanced format with unique IDs
 		const analysisWithIds = addIdsToRawAnalysisResult(rawAnalysis);
 
-		const successMessage = `✅ Analysis completed for exchange ${exchange.id}: ${JSON.stringify(analysisWithIds)}`;
-		console.log(successMessage);
-		logToAnalysisFile(successMessage);
+		const issuesCount =
+			analysisWithIds.result === NO_ISSUES_FOUND ? 0 : analysisWithIds.result.issues.length;
+		logger.info(
+			`[analysis] Analysis completed for exchange ${exchange.id} (issues found: ${issuesCount})`
+		);
 		return analysisWithIds;
 	} catch (error) {
-		const errorMessage = `❌ Analysis failed for exchange ${exchange.id}: ${error}`;
-		console.log(errorMessage);
-		logToAnalysisFile(errorMessage);
+		logger.error(
+			`[analysis] Analysis failed for exchange ${exchange.id} (URL: ${exchange.url}, Status: ${exchange.response_status}): ${String(error)}`
+		);
 		return null;
 	}
 }

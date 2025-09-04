@@ -3,45 +3,43 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 import { copyFile, mkdir } from 'fs/promises';
 import { join } from 'path';
+import { build } from 'esbuild';
 
-// Plugin to copy CLI files to build directory
-const copyCliPlugin = () => {
+// Plugin to build and copy CLI files to build directory
+const buildCliPlugin = () => {
 	return {
-		name: 'copy-cli',
+		name: 'build-cli',
 		closeBundle: async () => {
 			try {
 				// Use a delay to ensure adapter-node has finished
 				await new Promise((resolve) => setTimeout(resolve, 100));
 
-				// Create lib directory in build
-				await mkdir(join('build', 'lib'), { recursive: true });
-				await mkdir(join('build', 'lib', 'cli'), { recursive: true });
-				await mkdir(join('build', 'lib', 'config'), { recursive: true });
-				await mkdir(join('build', 'lib', 'proxy'), { recursive: true });
+				// Create directories for the new structure
+				await mkdir(join('build', 'src', 'lib', 'proxy'), { recursive: true });
 
-				// Copy CLI files
-				await copyFile(
-					join('src', 'lib', 'cli', 'start-command.js'),
-					join('build', 'lib', 'cli', 'start-command.js')
-				);
-				await copyFile(
-					join('src', 'lib', 'config', 'ports.js'),
-					join('build', 'lib', 'config', 'ports.js')
-				);
+				// Build TypeScript files to JavaScript
+				await build({
+					entryPoints: ['src/**/*.ts', 'bin/**/*.ts'],
+					outdir: 'build',
+					format: 'esm',
+					platform: 'node',
+					target: 'node18',
+					bundle: false,
+					sourcemap: false,
+					keepNames: true,
+					outExtension: { '.js': '.js' },
+					outbase: '.'
+				});
 
-				// Copy proxy files (interceptor and certificate manager)
+				// Copy Python interceptor (no transpilation needed)
 				await copyFile(
 					join('src', 'lib', 'proxy', 'interceptor.py'),
-					join('build', 'lib', 'proxy', 'interceptor.py')
-				);
-				await copyFile(
-					join('src', 'lib', 'proxy', 'certificate-manager.js'),
-					join('build', 'lib', 'proxy', 'certificate-manager.js')
+					join('build', 'src', 'lib', 'proxy', 'interceptor.py')
 				);
 
-				console.log('✅ Copied CLI files to build directory');
+				console.log('✅ Built and copied CLI files to build directory');
 			} catch (error) {
-				console.error('❌ Failed to copy CLI files:', error);
+				console.error('❌ Failed to build CLI files:', error);
 				throw error;
 			}
 		}
@@ -49,7 +47,7 @@ const copyCliPlugin = () => {
 };
 
 export default defineConfig({
-	plugins: [sveltekit(), devtoolsJson(), copyCliPlugin()],
+	plugins: [sveltekit(), devtoolsJson(), buildCliPlugin()],
 	test: {
 		expect: { requireAssertions: true },
 		projects: [

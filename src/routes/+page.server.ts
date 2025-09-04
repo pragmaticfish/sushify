@@ -1,6 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { getExchanges } from '$lib/server/exchanges-store';
 import { checkAnalysisStatus } from '$lib/server/analysis-config';
+import { getCaptureState } from '$lib/server/capture-state';
 
 export const load: PageServerLoad = async () => {
 	// Check if analysis is enabled
@@ -11,6 +12,7 @@ export const load: PageServerLoad = async () => {
 
 	return {
 		analysisEnabled,
-		initialExchanges
+		initialExchanges,
+		capturing: getCaptureState()
 	};
 };

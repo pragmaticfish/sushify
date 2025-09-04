@@ -7,7 +7,7 @@
 
 import { spawn, execSync } from 'child_process';
 import { platform } from 'os';
-import { installCertificate, certificateExists } from '../src/lib/proxy/certificate-manager.js';
+import { installCertificate, certificateExists } from './certificate-manager.js';
 
 const MINIMUM_PYTHON_VERSION = [3, 8]; // Python 3.8+
 
@@ -25,7 +25,7 @@ console.log('🔍 Checking Sushify proxy dependencies...');
 /**
  * Check if a command exists in the system
  */
-function commandExists(command) {
+function commandExists(command: string): boolean {
 	try {
 		execSync(`which ${command}`, { stdio: 'ignore' });
 		return true;
@@ -37,7 +37,7 @@ function commandExists(command) {
 /**
  * Get Python version
  */
-function getPythonVersion(pythonCmd) {
+function getPythonVersion(pythonCmd: string): number[] | null {
 	try {
 		const output = execSync(`${pythonCmd} --version`, { encoding: 'utf8' });
 		const match = output.match(/Python (\d+)\.(\d+)\.(\d+)/);
@@ -53,7 +53,7 @@ function getPythonVersion(pythonCmd) {
 /**
  * Check if version meets minimum requirements
  */
-function versionMeetsRequirement(version, minimum) {
+function versionMeetsRequirement(version: number[] | null, minimum: number[]): boolean {
 	if (!version) return false;
 
 	for (let i = 0; i < minimum.length; i++) {
@@ -94,17 +94,15 @@ async function installCertificateForSetup() {
 	if (certificateExists()) {
 		try {
 			// Try to install (this will check if it's already in trust store)
-			const installed = await installCertificate();
-			if (installed) {
-				console.log('✅ HTTPS certificate configured successfully');
-			} else {
-				console.log('⚠️  Certificate setup had issues - HTTPS may not work properly');
-				console.log('💡 You can try running: sushify cleanup && sushify setup');
-			}
+			// Try to install (this will check if it's already in trust store)
+			await installCertificate();
+			console.log('✅ HTTPS certificate configured successfully');
+			console.log('✅ HTTPS certificate configured successfully');
 		} catch (error) {
-			console.log('⚠️  Certificate setup failed:', error.message);
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			console.log('⚠️  Certificate setup failed:', errorMessage);
 			console.log('💡 HTTPS traffic may not be captured properly');
-			console.log('💡 You can try again later with: sushify setup');
+			console.log('💡 You can try again after fixing the issue with: sushify setup');
 		}
 	} else {
 		console.log('⚠️  mitmproxy certificate not found');
@@ -129,7 +127,7 @@ async function setupProxy() {
 			const version = getPythonVersion(cmd);
 			if (versionMeetsRequirement(version, MINIMUM_PYTHON_VERSION)) {
 				pythonCmd = cmd;
-				console.log(`✅ Found ${cmd} ${version.join('.')}`);
+				console.log(`✅ Found ${cmd} ${version!.join('.')}`);
 				break;
 			} else if (version) {
 				console.log(
@@ -183,7 +181,7 @@ async function setupProxy() {
 /**
  * Install mitmproxy using pip
  */
-function installMitmproxy(pythonCmd) {
+function installMitmproxy(pythonCmd: string): Promise<boolean> {
 	return new Promise((resolve) => {
 		console.log(`Running: ${pythonCmd} -m pip install mitmproxy requests`);
 

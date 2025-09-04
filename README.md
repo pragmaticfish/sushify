@@ -264,6 +264,69 @@ See [`test-apps/`](./test-apps/) for detailed testing instructions and what each
 - 🎯 **Smart recommendations** - Turn soup-like prompts into sushi
 - 📱 **Beautiful dashboard** - Monitor all LLM interactions
 
+## 📋 Logging & Debugging
+
+Sushify creates detailed logs to help with troubleshooting and bug reports. Each session generates its own logging directory with structured logs.
+
+### Log Location
+
+```
+~/.sushify/logs/
+├── session-2025-09-04-103045/    # Each session gets its own folder
+│   ├── interceptor.log           # Python mitmproxy logs
+│   └── server.log                # Node.js server/analysis logs
+├── session-2025-09-04-110230/    # Previous sessions
+└── latest -> session-2025-09-04-103045/  # Symlink to current session
+```
+
+### What Gets Logged
+
+- **interceptor.log**: Request/response interception, network errors, exchange capturing
+- **server.log**: Dashboard startup, LLM analysis results, API calls
+
+### Log Formats
+
+**Interceptor Log (Python)**:
+
+```
+2025-09-04 10:30:46 INFO  Interceptor loaded successfully
+2025-09-04 10:30:47 DEBUG Request intercepted: POST https://api.openai.com/v1/chat/completions
+2025-09-04 10:30:47 DEBUG Response received: POST https://api.openai.com/v1/chat/completions (200, 150ms)
+2025-09-04 10:30:47 INFO  Exchange captured: POST https://api.openai.com/v1/chat/completions (200, 150ms)
+```
+
+**Server Log (Node.js - JSON structured)**:
+
+```
+{"time":"2025-09-04T10:30:45.100Z","level":"info","component":"startup","msg":"Starting dashboard and proxy services"}
+{"time":"2025-09-04T10:30:47.250Z","level":"info","component":"analysis","exchangeId":"exchange_123456","msg":"Starting LLM analysis"}
+{"time":"2025-09-04T10:30:48.500Z","level":"info","component":"analysis","exchangeId":"exchange_123456","issuesFound":2,"msg":"Analysis completed"}
+```
+
+### Session Information
+
+When starting Sushify, the log directory path is displayed:
+
+```bash
+$ sushify start "python app.py"
+🍣 Sushify - Turn your prompt salad into sushi
+
+🔍 Checking dependencies...
+📁 Session logs: ~/.sushify/logs/session-2025-09-04-103045
+```
+
+### Automatic Cleanup
+
+Sushify automatically keeps the 10 most recent session directories and removes older ones to prevent disk space issues.
+
+### Reporting Issues
+
+When reporting bugs, please include:
+
+1. The entire session directory (compress and attach)
+2. Your command that started Sushify
+3. Steps to reproduce the issue
+
 ## 🛠️ Development Workflow
 
 ### Making Changes

@@ -1,81 +1,45 @@
 import { json } from '@sveltejs/kit';
-import { nanoid } from 'nanoid';
 import type { RequestEvent } from './$types';
-import type {
-	CaptureStatusResponse,
-	CaptureToggleRequest,
-	CaptureToggleResponse,
-	ApiErrorResponse
-} from '$lib/types';
+import { getCaptureState, setCaptureState } from '$lib/server/capture-state';
 
-// Simple in-memory store for capture state
-// Later we'll use a proper database or shared state management
-// Start with capture enabled by default for better UX
-const initialSessionId = `session-${nanoid(10)}`;
-let captureState: CaptureStatusResponse = {
-	capturing: true,
-	sessionId: initialSessionId,
-	startedAt: new Date()
-};
-
-// Log initial state
-console.log(`🟢 Proxy capture enabled by default - Session: ${initialSessionId}`);
+// This endpoint is used by:
+// 1. CLI readiness check to verify dashboard is ready
+// 2. Python interceptor to check if capture is enabled
+// 3. UI toggle to change capture state
 
 export async function GET() {
 	return json({
-		capturing: captureState.capturing,
-		sessionId: captureState.sessionId,
-		startedAt: captureState.startedAt
+		capturing: getCaptureState(),
+		ready: true
 	});
 }
 
 export async function POST({ request }: RequestEvent) {
 	try {
-		const body: CaptureToggleRequest = await request.json();
+		const body = await request.json();
+		const { action } = body;
 
-		if (body.action === 'enable') {
-			const sessionId = `session-${nanoid(10)}`;
-			captureState = {
-				capturing: true,
-				sessionId,
-				startedAt: new Date()
-			};
-
-			console.log(`🟢 Proxy capture enabled - Session: ${sessionId}`);
-
-			const response: CaptureToggleResponse = {
+		if (action === 'enable') {
+			setCaptureState(true);
+			return json({
 				success: true,
 				capturing: true,
-				sessionId,
 				message: 'Capture mode enabled'
-			};
-			return json(response);
+			});
 		}
 
-		if (body.action === 'disable') {
-			const previousSession = captureState.sessionId;
-			captureState = {
-				capturing: false,
-				sessionId: null,
-				startedAt: null
-			};
-
-			console.log(`🔴 Proxy capture disabled - Previous session: ${previousSession}`);
-
-			const response: CaptureToggleResponse = {
+		if (action === 'disable') {
+			setCaptureState(false);
+			return json({
 				success: true,
 				capturing: false,
-				sessionId: null,
 				message: 'Capture mode disabled'
-			};
-			return json(response);
+			});
 		}
 
-		const errorResponse: ApiErrorResponse = { error: 'Invalid action' };
-		return json(errorResponse, { status: 400 });
+		return json({ error: 'Invalid action' }, { status: 400 });
 	} catch (error) {
 		console.error('❌ Error in proxy status endpoint:', error);
-		const errorResponse: ApiErrorResponse = { error: 'Invalid request' };
-		return json(errorResponse, { status: 400 });
+		return json({ error: 'Invalid request' }, { status: 400 });
 	}
 }

@@ -12,14 +12,14 @@ const CERT_FILE = join(MITMPROXY_DIR, 'mitmproxy-ca-cert.pem');
 /**
  * Check if mitmproxy certificate exists
  */
-export function certificateExists() {
+export function certificateExists(): boolean {
 	return existsSync(CERT_FILE);
 }
 
 /**
  * Check if certificate is already installed in system trust store
  */
-export async function isCertificateInstalled() {
+export async function isCertificateInstalled(): Promise<boolean> {
 	if (!certificateExists()) {
 		return false;
 	}
@@ -46,7 +46,7 @@ export async function isCertificateInstalled() {
  * Generate mitmproxy certificate by starting and stopping mitmproxy
  * @returns {Promise<boolean>} - Returns true if certificate was generated successfully
  */
-export async function generateCertificate() {
+export async function generateCertificate(): Promise<void> {
 	console.log('🔐 Generating mitmproxy certificate...');
 
 	// Ensure .mitmproxy directory exists
@@ -64,7 +64,7 @@ export async function generateCertificate() {
 			mitm.kill();
 			if (certificateExists()) {
 				console.log('✅ Certificate generated successfully');
-				resolve(true);
+				resolve(undefined);
 			} else {
 				console.error('❌ Failed to generate certificate');
 				reject(
@@ -77,7 +77,7 @@ export async function generateCertificate() {
 			clearTimeout(timeout);
 			if (certificateExists()) {
 				console.log('✅ Certificate generated successfully');
-				resolve(true);
+				resolve(undefined);
 			} else {
 				console.error('❌ Failed to generate certificate');
 				reject(
@@ -98,7 +98,7 @@ export async function generateCertificate() {
  * Install certificate to system trust store
  * @returns {Promise<boolean>} - Returns true if certificate was installed successfully
  */
-export async function installCertificate() {
+export async function installCertificate(): Promise<void> {
 	try {
 		if (!certificateExists()) {
 			await generateCertificate();
@@ -107,7 +107,7 @@ export async function installCertificate() {
 		// Check if certificate is already installed in system trust store
 		if (await isCertificateInstalled()) {
 			console.log('✅ Certificate already installed in system trust store');
-			return true;
+			return;
 		}
 
 		console.log('🔐 Installing mitmproxy certificate to system trust store...');
@@ -139,7 +139,6 @@ export async function installCertificate() {
 		}
 
 		console.log('✅ Certificate installed successfully');
-		return true;
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		console.error('❌ Certificate installation failed:', errorMessage);
@@ -163,7 +162,7 @@ export async function installCertificate() {
  * @returns {Promise<void>}
  */
 async function installCertificateMacOS() {
-	return new Promise((resolve, reject) => {
+	return new Promise<void>((resolve, reject) => {
 		console.log('🍎 Installing certificate on macOS...');
 		console.log('🔐 You will be prompted for your password');
 		console.log(
@@ -206,7 +205,7 @@ async function installCertificateMacOS() {
  * @returns {Promise<void>}
  */
 async function installCertificateWindows() {
-	return new Promise((resolve, reject) => {
+	return new Promise<void>((resolve, reject) => {
 		console.log('🪟 Installing certificate on Windows...');
 		console.log('🔐 You may be prompted for administrator privileges');
 
@@ -241,7 +240,7 @@ async function installCertificateWindows() {
  * @returns {Promise<void>}
  */
 async function installCertificateLinux() {
-	return new Promise((resolve, reject) => {
+	return new Promise<void>((resolve, reject) => {
 		console.log('🐧 Installing certificate on Linux...');
 		console.log('🔐 You will be prompted for your password');
 
@@ -319,7 +318,7 @@ export async function removeCertificate() {
  * @returns {Promise<void>}
  */
 async function removeCertificateMacOS() {
-	return new Promise((resolve) => {
+	return new Promise<void>((resolve) => {
 		// Find and remove the certificate
 		const security = spawn(
 			'sudo',
@@ -344,7 +343,7 @@ async function removeCertificateMacOS() {
  * @returns {Promise<void>}
  */
 async function removeCertificateWindows() {
-	return new Promise((resolve) => {
+	return new Promise<void>((resolve) => {
 		const powershell = spawn(
 			'powershell',
 			[
@@ -371,7 +370,7 @@ async function removeCertificateWindows() {
  * @returns {Promise<void>}
  */
 async function removeCertificateLinux() {
-	return new Promise((resolve) => {
+	return new Promise<void>((resolve) => {
 		const rm = spawn(
 			'sudo',
 			['rm', '-f', '/usr/local/share/ca-certificates/mitmproxy-ca-cert.crt'],
@@ -405,7 +404,7 @@ async function removeCertificateLinux() {
  * Check if certificate is installed on macOS
  * @returns {Promise<boolean>}
  */
-async function checkCertificateMacOS() {
+async function checkCertificateMacOS(): Promise<boolean> {
 	return new Promise((resolve) => {
 		const security = spawn(
 			'security',
@@ -429,7 +428,7 @@ async function checkCertificateMacOS() {
  * Check if certificate is installed on Linux
  * @returns {Promise<boolean>}
  */
-async function checkCertificateLinux() {
+async function checkCertificateLinux(): Promise<boolean> {
 	return new Promise((resolve) => {
 		const ls = spawn('ls', ['/usr/local/share/ca-certificates/mitmproxy-ca-cert.crt'], {
 			stdio: 'pipe'
@@ -449,7 +448,7 @@ async function checkCertificateLinux() {
  * Check if certificate is installed on Windows
  * @returns {Promise<boolean>}
  */
-async function checkCertificateWindows() {
+async function checkCertificateWindows(): Promise<boolean> {
 	return new Promise((resolve) => {
 		const powershell = spawn(
 			'powershell',

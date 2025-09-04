@@ -16,7 +16,6 @@ export const PORTS = {
 
 /**
  * Get the dashboard URL
- * @returns {string} Full dashboard URL
  */
 export function getDashboardUrl() {
 	return `http://localhost:${PORTS.DASHBOARD}`;
@@ -24,7 +23,6 @@ export function getDashboardUrl() {
 
 /**
  * Get the proxy URL for environment variables
- * @returns {string} Full proxy URL
  */
 export function getProxyUrl() {
 	return `http://localhost:${PORTS.PROXY}`;
@@ -32,7 +30,6 @@ export function getProxyUrl() {
 
 /**
  * Get the dashboard API base URL (IPv4 explicit for Node.js fetch)
- * @returns {string} Dashboard API base URL
  */
 export function getDashboardApiUrl() {
 	return `http://127.0.0.1:${PORTS.DASHBOARD}`;
