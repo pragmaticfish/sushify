@@ -31,5 +31,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# VSCode/ Cursor
+# VSCode/ Cursor/ Intellij
 .vscode
+.idea
+*.iml
