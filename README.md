@@ -217,16 +217,23 @@ Sushify creates detailed logs to help with troubleshooting and bug reports. Each
 
 Sushify automatically keeps the 10 most recent session directories and removes older ones to prevent disk space issues.
 
+## F.A.Q
+
+1. **Q**: What's the difference between Sushify and running evals?
+   **A**: Evals focus on the LLM's output and Sushify, while output aware, focuses on the inputs.
+2. **Q**: Why use a proxy rather than X?
+   **A**: I considered and implemented various approaches in an attempt to solve this problem. I might give a talk or write about it one day. Other solutions either require code modifications that are easy to get wrong or break under the complexity of real world apps. With that said, I am open to feedback from the community and will course correct if needed.
+3. **Q**: What is Pragmatic Fish? You're just one person...
+   **A**: I am one person now but I hope that others will want to join me. Almost all the dev tools for LLM apps are still MIA and Pragmatic Fish is my attempt to start something that addresses these gaps in novel and creative ways.
+4. **Q**: Why use OpenAI for analysis?
+   **A**: Because it's easy for the MVP. They have great support for structured outputs and I know their models very well. Ideally a future version would allow using local models and then it will be completely free and super cool.
+5. **Q**: Can you add feature X?
+   **A**: Sure, why not. Open an issue and let's talk.
+
 ## 🛠️ Contributing
 
 Want to contribute to Sushify or modify it for your needs?
 
 👨‍💻 **See the [Development Guide](./docs/DEVELOPMENT.md)** for:
 
-- Complete development setup instructions
-- Local testing workflows
-- Project structure and architecture
-- Contributing guidelines
-- Troubleshooting tips
-
-Contributions and feedback are welcome! The development guide has everything you need to get started.
+Contributions and feedback are welcome!! The development guide has everything you need to get started.

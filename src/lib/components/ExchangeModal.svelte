@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Exchange } from '$lib/types';
+	import type { Exchange, AnalysisIssue } from '$lib/types';
 	import Markdown from 'svelte-exmarkdown';
 
 	type Props = {
@@ -57,6 +57,22 @@
 		if (e.target === e.currentTarget) {
 			onClose();
 		}
+	}
+
+	// Sort issues by severity (high → medium → low) and then by category
+	function sortIssues(issues: AnalysisIssue[]) {
+		const severityOrder = { high: 0, medium: 1, low: 2 };
+
+		return [...issues].sort((a, b) => {
+			// Primary sort by severity
+			const severityDiff = severityOrder[a.severity] - severityOrder[b.severity];
+			if (severityDiff !== 0) {
+				return severityDiff;
+			}
+
+			// Secondary sort by category (alphabetical)
+			return a.category.localeCompare(b.category);
+		});
 	}
 </script>
 
@@ -126,7 +142,7 @@
 							</div>
 						{:else}
 							<div class="analysis-issues">
-								{#each exchange.analysis_result.result.issues as issue (issue.id)}
+								{#each sortIssues(exchange.analysis_result.result.issues) as issue (issue.id)}
 									<div class="issue-card severity-{issue.severity}">
 										<div class="issue-header">
 											<div class="issue-title">
