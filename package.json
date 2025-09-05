@@ -1,12 +1,12 @@
 {
 	"name": "sushify",
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"description": "Turn your prompt salad into sushi 🥗 → 🍣. Capture, analyze, and refine LLM interactions with zero code changes",
 	"type": "module",
 	"license": "MIT",
 	"author": {
 		"name": "Isaac Hagoel",
-		"email": "isaac@pragmaticfish.ai"
+		"email": "pragmaticfish@gmail.com"
 	},
 	"homepage": "https://github.com/pragmaticfish/sushify#readme",
 	"repository": {

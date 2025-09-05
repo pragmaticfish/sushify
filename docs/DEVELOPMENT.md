@@ -9,7 +9,7 @@ This guide is for developers who want to contribute to Sushify or modify the lib
 1. **Clone the repository**:
 
    ```bash
-   git clone <repository-url>
+   git clone git@github.com:pragmaticfish/sushify.git
    cd sushify
    ```
 
