@@ -2,52 +2,45 @@
 
 **"Turn your prompt salad into sushi"** 🥗 → 🍣
 
-Automatically capture and analyze every LLM API call in your application. Transform messy, contradictory prompts into precision-crafted AI interactions with zero code changes.
+Sushify is a development tool that runs on your local machine, wraps your AI app, and automatically captures and analyzes every LLM API call in your application - catching issues that can cause unpredictable behaviors and bad outputs.
 
-> **📖 This README is for developers contributing to Sushify.** For end-user documentation, visit the [marketing site](link-to-be-added) or try the [playground](link-to-be-added).
+The best part? No code changes needed. No complex configuration files (actually no configuration files at all!).
+It supports any app (including dockerized) that can be proxied, regardless of programming language or LLM provider.
 
-## 👨‍💻 Development Setup
+**You can set it up in ~5 minutes**.
+
+TODO - ADD GIF OF DASHBOARD HERE
+
+## Who? When? Why? How?
+
+- **Who is Sushify for?** Developers building AI applications
+- **When?** During development. Sushify runs on your localhost.
+- **Why?** Because we pass tons of free text to LLMs, usually made out of fragments, sometimes involving conditional logic. System prompts, tool descriptions, output schemas - sometimes thousands of tokens that evolve over time. There is no compiler, no linter. It's all free text. And we haven't even started talking about context management bugs. How many times has your app started misbehaving and after a lot of digging you realized that it's because you (or someone else) messed up some of the instructions? No more!
+- **How?** Sushify runs a proxy that wraps your app and intercepts network requests and responses to LLMs. Each exchange is sent to OpenAI for analysis using your API key. The analysis results are displayed on a dashboard that runs locally on your machine, highlighting issues and suggesting fixes.
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- **[Node.js](https://nodejs.org/en/download)** version ^20.19 || ^22.12 || >=24 (Vite requirement)
-  - **Recommended: v24.0.0+** for AI application proxy support
+- **[Node.js](https://nodejs.org/en/download)** version ^20.19 || ^22.12 || >=24
+  - **Recommended: v24.0.0+** for best AI application proxy support
 - **[Python 3.8+](https://www.python.org/downloads/)** with pip (for HTTP proxy functionality)
+  - **Note:** Command `python3` must be available (even if `python` points to Python 2.7)
 - **[OpenAI API Key](https://platform.openai.com/api-keys)** (optional, for prompt analysis)
-- **Git** for cloning the repository
-- **Docker and Docker Compose** (optional, for testing containerized applications)
 
-### Getting Started
+### Install Sushify
 
-1. **Clone the repository**:
+```bash
+npm install -g sushify
+```
 
-   ```bash
-   git clone <repository-url>
-   cd sushify
-   ```
+### One-time Setup
 
-2. **Set up Node.js version** (if using nvm):
+Run the setup command to configure dependencies:
 
-   ```bash
-   nvm use
-   ```
-
-3. **Install dependencies**:
-
-   ```bash
-   npm install
-   ```
-
-4. **Build the project**:
-
-   ```bash
-   npm run build
-   ```
-
-5. **Set up development environment** (one-time):
-   ```bash
-   ./bin/sushify.js setup
-   ```
+```bash
+sushify setup
+```
 
 This will automatically:
 
@@ -56,11 +49,13 @@ This will automatically:
 - ✅ Install HTTPS certificate (one-time setup)
 - ✅ Provide step-by-step guidance if any issues
 
-**Note:** You may be prompted for your password to install the HTTPS certificate.
+**Note:** You will be prompted for your password to install the HTTPS certificate.
 
-### 🧠 Enable Prompt Analysis (Optional)
+### Configure Your Environment
 
-To enable real-time prompt quality analysis, set your OpenAI API key:
+#### Set Your OpenAI API Key (Required for Analysis)
+
+The whole point of Sushify is to analyze your prompts for quality issues. Set your OpenAI API key to enable this:
 
 ```bash
 export OPENAI_API_KEY=sk-your-key-here
@@ -73,17 +68,30 @@ echo 'export OPENAI_API_KEY=sk-your-key-here' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-**With analysis enabled, you'll get:**
+**Cost:** the analysis is currently done by Open AI's o3 - which is quite cheap.
 
-- 🍣 **Quality scoring** for each prompt
-- 🔍 **Problem detection** in instructions
-- 📊 **Real-time feedback** in the dashboard
+#### Analysis Mode (Optional)
 
-**Cost:** ~$0.01-0.05 per prompt analysis using GPT-4.1
+Sushify supports two analysis modes:
 
-### 🔧 Custom LLM Provider (Optional)
+- **Deep mode** (default): Runs multiple LLM calls per analysis for thorough prompt quality checking
+- **Cheap mode**: Uses a single LLM call per analysis for faster, more cost-effective analysis
 
-By default, Sushify monitors calls to OpenAI, Anthropic, and Google AI APIs. To monitor a custom LLM provider (like Azure OpenAI, custom gateways, or self-hosted models), set:
+```bash
+# Switch to cheap mode for faster analysis
+export ANALYSIS_MODE=cheap
+
+# Switch back to deep mode (or unset the variable)
+export ANALYSIS_MODE=deep
+# OR
+unset ANALYSIS_MODE
+```
+
+The current analysis mode is displayed in the dashboard. You can switch modes anytime by changing the environment variable and restarting Sushify.
+
+#### Custom LLM Provider (Optional)
+
+By default, Sushify monitors OpenAI, Anthropic, and Google AI APIs. To monitor a custom provider:
 
 ```bash
 export LLM_PROVIDER_BASE_URL=your-custom-ai-gateway.com
@@ -92,168 +100,103 @@ export LLM_PROVIDER_BASE_URL=your-custom-ai-gateway.com
 **Examples:**
 
 ```bash
-
-# Custom gateway (domain only)
+# Custom gateway
 export LLM_PROVIDER_BASE_URL=api.mygateway.com
 
 # Self-hosted with port
 export LLM_PROVIDER_BASE_URL=https://my-llm-server.internal:8080
 
-# Path-specific matching (only captures /v1/* endpoints)
-export LLM_PROVIDER_BASE_URL=https://api.mygateway.com/v1
-
-# Very specific path matching
-export LLM_PROVIDER_BASE_URL=https://my-ai-server.com/api/v2/chat
+# Azure OpenAI
+export LLM_PROVIDER_BASE_URL=https://your-resource.openai.azure.com
 ```
 
-**Note:** This replaces the default AI domains entirely. Only POST requests with conversation content matching your specified URL pattern will be captured and analyzed.
+### Start Using Sushify
 
-## 🚀 JavaScript Runtime Support
+```bash
+# Wrap any command that makes LLM API calls
+sushify start "python your-ai-app.py"
+sushify start "node your-ai-app.js"
+sushify start "npm start"
+sushify start "docker compose up"
+```
 
-### ✅ **Recommended: Modern Runtimes** (Zero Configuration)
+That's it! Open your browser to the dashboard URL shown in the terminal to see your LLM interactions being captured and analyzed in real-time.
 
-**Perfect for AI applications with zero code changes:**
+### ✨ What You Get
 
-- ✅ **Node.js v24.0.0+** - Native `fetch()` proxy support
-- ✅ **Deno** - Built-in proxy support for `fetch()`
-- ✅ **Bun** - [Native `HTTP_PROXY` support](https://bun.com/guides/http/proxy)
-- ✅ **OpenAI SDK** - Works automatically on modern runtimes
-- ✅ **Anthropic SDK** - Works automatically on modern runtimes
-- ✅ **All AI SDKs** - Most use native `fetch()` internally
+With Sushify configured, you'll get:
 
-**Just run your app with Sushify - no code changes needed!** 🎯
+- 🍣 **Quality scoring** for each prompt
+- 🔍 **Problem detection** in instructions
+- 📊 **Real-time feedback** in the dashboard
+- 🎯 **Smart recommendations** to improve your prompts
 
-### ⚠️ **Legacy Node.js Support** (< v24)
+## 🌐 Language Support
 
-**Limited compatibility due to AI SDK requirements:**
+Sushify works with **any programming language** that uses standard HTTP libraries:
 
-- ❌ **OpenAI SDK** - Requires native `fetch()` (Node.js v24.0.0+)
-- ❌ **Anthropic SDK** - Requires native `fetch()` (Node.js v24.0.0+)
-- ❌ **Most AI SDKs** - Use native `fetch()` internally
-- ⚠️ **Custom HTTP clients** - Require manual proxy configuration
-
-**💡 Recommendation:** Upgrade to Node.js v24+ for the best AI development experience!
-
-📚 **Need help with older Node.js versions?** See [`docs/OLD-NODE-INSTRUCTIONS.md`](./docs/OLD-NODE-INSTRUCTIONS.md) for detailed setup instructions.
-
-### 🐍 **Python Application Support**
-
-**Universal compatibility:**
-
-- ✅ **Any Python version** - Full support with zero code changes
-- ✅ **`requests` library** - Automatic proxy support via `REQUESTS_CA_BUNDLE`
-- ✅ **`urllib3`, `httpx`** - Standard proxy environment variable support
-- ✅ **Django, Flask, FastAPI** - Works with any Python web framework
-
-Python applications work out-of-the-box with Sushify's language-agnostic proxy configuration.
-
-### 🌐 **Universal Language Support**
-
-**Works with any language that respects standard proxy environment variables:**
-
+- ✅ **Python** - `requests`, `urllib3`, `httpx`, Flask, Django, FastAPI
+- ✅ **Node.js v24+** - Native `fetch()`, OpenAI SDK, Anthropic SDK
 - ✅ **Go** - `net/http` package
 - ✅ **Rust** - `reqwest` and other HTTP clients
 - ✅ **Java** - JVM proxy configuration
 - ✅ **C#/.NET** - `HttpClient` with proxy support
 - ✅ **PHP** - `cURL` and `Guzzle`
-- ✅ **And many more** - Most modern HTTP clients support standard proxy env vars
+- ✅ **Docker containers** - Any language in containers
 
-**Sushify automatically configures these environment variables:**
+**Works automatically with zero code changes!** Sushify configures standard proxy environment variables that most HTTP clients respect automatically.
 
-- `HTTP_PROXY` / `HTTPS_PROXY` - Standard proxy configuration
-- `SSL_CERT_FILE` / `REQUESTS_CA_BUNDLE` / `CURL_CA_BUNDLE` - Certificate paths
-- Language-specific variables for Node.js, Python, etc.
+> **Node.js < v24**: Limited AI SDK support due to missing native `fetch()`. See [`docs/OLD-NODE-INSTRUCTIONS.md`](./docs/OLD-NODE-INSTRUCTIONS.md) for workarounds.
 
-**User-configurable environment variables:**
+> **Google AI**: Google's client uses gRPC by default. For LLM API capture, add `transport="rest"` to your client configuration: `genai.configure(transport="rest")`
 
-- `OPENAI_API_KEY` - Enable prompt analysis (optional)
-- `LLM_PROVIDER_BASE_URL` - Monitor custom AI provider instead of defaults (optional)
-
-**If your app's HTTP client respects these standard environment variables, it works automatically!** 🎯
-
-## 🎯 Development Usage
+## 🎯 Usage Examples
 
 ```bash
-# Test with relative paths during development
-./bin/sushify.js start "python main.py"    # Python
-./bin/sushify.js start "go run main.go"    # Go
-./bin/sushify.js start "npm start"         # Node.js
-./bin/sushify.js start "bun run dev"       # Bun
-./bin/sushify.js start "deno run main.ts"  # Deno
-./bin/sushify.js start "cargo run"         # Rust
+# Python applications
+sushify start "python main.py"
+sushify start "flask run"
+sushify start "uvicorn app:app --reload"
+
+# Node.js applications
+sushify start "node app.js"
+sushify start "npm start"
+sushify start "npm run dev"
+
+# Other languages
+sushify start "go run main.go"
+sushify start "bun run dev"
+sushify start "deno run main.ts"
+sushify start "cargo run"
+
+# Docker applications
+sushify start --docker=backend "docker compose up"
 ```
 
-### 🔧 First-time Setup Details
+### 🔧 What Happens During Setup
 
-The setup process will:
+The one-time setup will:
 
-- ✅ Check for Python 3.8+ installation
-- ✅ Install mitmproxy automatically (if possible)
-- ✅ **Install HTTPS certificate** (one-time, requires password)
-- ✅ Provide platform-specific installation instructions if needed
-- ✅ Install Sushify globally for easy access
+- ✅ Check for Python 3.8+ and Node.js
+- ✅ Install mitmproxy (HTTP proxy for traffic capture)
+- ✅ **Install HTTPS certificate** (requires your password once)
+- ✅ Provide installation guidance if anything is missing
 
-#### 🔐 Certificate Installation (One-time)
+**Why the certificate?** Sushify needs to intercept HTTPS traffic to analyze AI API calls (OpenAI, Anthropic, etc.). The certificate is only active when Sushify runs and can be removed anytime with `sushify cleanup`.
 
-During setup, you'll be prompted for your password to install a development certificate. This is needed because:
+> **One-time only**: You'll be prompted for your password once to install the certificate. After that, Sushify works without any authentication.
 
-- **Sushify intercepts HTTPS traffic** to analyze AI API calls (OpenAI, Anthropic, etc.)
-- **Your system must trust the certificate** for HTTPS interception to work
-- **This is standard practice** - Charles, Fiddler, and other dev tools do the same
-- **It's completely safe** - the certificate only works when Sushify proxy is running
+## 🐳 Docker Support
 
-**Security Notes:**
-
-- ✅ Certificate only works with Sushify proxy (localhost:7332)
-- ✅ Cannot intercept traffic without explicit proxy configuration
-- ✅ Only active when you run `sushify start`
-- ✅ Can be removed anytime with `sushify cleanup`
-
-**You'll only be asked for your password once** - subsequent uses of Sushify require no authentication.
-
-> **Note**: Python 3.8+ is required for HTTP traffic interception. The setup script will guide you through installation if Python is not found.
-
-### 📁 Data Directory
-
-Sushify creates a `~/.sushify/` directory in your home folder for:
-
-- **🔐 SSL certificates** - `mitmproxy-ca-cert.pem` (installed once during setup)
-- **🐳 Docker Compose temp files** - `docker-compose.sushify-*.yml` (auto-created and cleaned up)
-
-These files are automatically managed and typically don't require manual intervention. If you need to reset certificates or clear temp files, you can safely delete the `~/.sushify/` directory and run `./bin/sushify.js setup` again.
-
-## 🐳 Docker Compose Support
-
-For testing containerized applications during development:
+Sushify seamlessly works with containerized applications:
 
 ```bash
-# Automatically configure Docker services for traffic capture
-./bin/sushify.js start --docker=backend "docker compose up"
-./bin/sushify.js start --docker=api-service "docker compose up"
+# Automatically configure specific Docker services
+sushify start --docker=backend "docker compose up"
+sushify start --docker=api-service "docker compose up"
 ```
 
-Sushify automatically:
-
-- ✅ **Generates proxy configuration** for your specified service
-- ✅ **Handles certificate mounting** for HTTPS interception
-- ✅ **Works with any language** in containers (Python, Node.js, Go, Java, etc.)
-- ✅ **Cleans up** generated files when done
-
-## 🧪 Testing Your Changes
-
-Validate your development work with our included test applications:
-
-```bash
-# Test with a simple Python app
-cd test-apps/simple-python
-../../bin/sushify.js start "python test-app.py"
-
-# Test with a Docker Compose multi-service app
-cd test-apps/docker-compose
-../../bin/sushify.js start --docker=backend "docker compose up"
-```
-
-See [`test-apps/`](./test-apps/) for detailed testing instructions and what each test validates.
+Sushify automatically configures proxy settings and certificate mounting for your containers. Works with any language (Python, Node.js, Go, Java, etc.) running in Docker.
 
 ## ✨ Features
 
@@ -295,12 +238,12 @@ Sushify creates detailed logs to help with troubleshooting and bug reports. Each
 2025-09-04 10:30:47 INFO  Exchange captured: POST https://api.openai.com/v1/chat/completions (200, 150ms)
 ```
 
-**Server Log (Node.js - JSON structured)**:
+**Server Log (Node.js)**:
 
 ```
-{"time":"2025-09-04T10:30:45.100Z","level":"info","component":"startup","msg":"Starting dashboard and proxy services"}
-{"time":"2025-09-04T10:30:47.250Z","level":"info","component":"analysis","exchangeId":"exchange_123456","msg":"Starting LLM analysis"}
-{"time":"2025-09-04T10:30:48.500Z","level":"info","component":"analysis","exchangeId":"exchange_123456","issuesFound":2,"msg":"Analysis completed"}
+2025-09-04 10:30:45 INFO  [startup] Starting dashboard and proxy services
+2025-09-04 10:30:47 INFO  [analysis] Starting LLM analysis for exchange_123456
+2025-09-04 10:30:48 INFO  [analysis] Analysis completed for exchange_123456 (issues found: 2)
 ```
 
 ### Session Information
@@ -327,28 +270,16 @@ When reporting bugs, please include:
 2. Your command that started Sushify
 3. Steps to reproduce the issue
 
-## 🛠️ Development Workflow
+## 🛠️ Contributing
 
-### Making Changes
+Want to contribute to Sushify or modify it for your needs?
 
-1. **Create a feature branch**: `git checkout -b feature/your-feature`
-2. **Make your changes** to the codebase
-3. **Test thoroughly** using the test apps in `test-apps/`
-4. **Run linting**: `npm run lint`
-5. **Build**: `npm run build`
-6. **Commit and push** your changes
+👨‍💻 **See the [Development Guide](./docs/DEVELOPMENT.md)** for:
 
-### Project Structure
+- Complete development setup instructions
+- Local testing workflows
+- Project structure and architecture
+- Contributing guidelines
+- Troubleshooting tips
 
-- `src/` - Core SvelteKit dashboard and TypeScript logic
-- `bin/` - CLI entry points and commands
-- `scripts/` - Setup and installation scripts
-- `test-apps/` - Test applications for development validation
-- `.local-files/` - Temporary development files (git-ignored)
-
-### Key Components
-
-- **Dashboard**: Real-time SvelteKit app with SSE for live updates
-- **Proxy**: mitmproxy-based HTTPS interception with Python interceptor
-- **CLI**: Node.js-based command interface with Docker Compose support
-- **Certificate Management**: Cross-platform HTTPS certificate installation
+We welcome contributions! The development guide has everything you need to get started.

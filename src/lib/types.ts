@@ -7,7 +7,7 @@ import { z } from 'zod';
 
 export const NO_ISSUES_FOUND = 'no issues found';
 
-const issueSchema = z.object({
+export const issueSchema = z.object({
 	category: z.enum([
 		'contradictory',
 		'vague',

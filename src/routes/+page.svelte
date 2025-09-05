@@ -12,7 +12,7 @@
 	let capturing = $state(data.capturing);
 	let error = $state<string | null>(null);
 	let exchanges = $state<Exchange[]>(data.initialExchanges);
-	let analysisEnabled = $state(data.analysisEnabled);
+	let analysisStatus = $state<'off' | 'cheap' | 'deep'>(data.analysisStatus);
 
 	// SSE connection
 	let sseConnection: ReturnType<typeof source> | null = null;
@@ -124,19 +124,26 @@
 				<div class="analysis-status-container">
 					{#if capturing}
 						<div class="analysis-status" transition:fade>
-							{#if analysisEnabled}
-								<span
-									class="analysis-indicator enabled"
-									title="Prompt analysis enabled - LLM calls will be analyzed for quality"
-								>
-									Analysis: ON
-								</span>
-							{:else}
+							{#if analysisStatus === 'off'}
 								<span
 									class="analysis-indicator disabled"
 									title="Prompt analysis disabled - Set OPENAI_API_KEY environment variable to enable"
 								>
 									Analysis: OFF
+								</span>
+							{:else if analysisStatus === 'deep'}
+								<span
+									class="analysis-indicator enabled"
+									title="Running multiple LLM calls per analysis. To switch to cheap mode set env.ANALYSIS_MODE=cheap"
+								>
+									Analysis: DEEP
+								</span>
+							{:else if analysisStatus === 'cheap'}
+								<span
+									class="analysis-indicator enabled"
+									title="Single LLM call per analysis. Unset the env var or set it to deep for more thorough analysis"
+								>
+									Analysis: CHEAP
 								</span>
 							{/if}
 						</div>
@@ -156,7 +163,7 @@
 					{/if}
 				</div>
 			{:else}
-				<ExchangesTable {exchanges} {analysisEnabled} />
+				<ExchangesTable {exchanges} analysisEnabled={analysisStatus !== 'off'} />
 			{/if}
 		</div>
 	</main>

@@ -11,6 +11,7 @@ import {
 } from '$lib/server/exchanges-store';
 import { analyzeLLMExchange, type CapturedExchange } from '$lib/server/analysis';
 import { checkAnalysisStatus } from '$lib/server/analysis-config';
+import { trackAnalysisStarted, trackAnalysisFinished } from '$lib/server/analysis-tracker';
 import { appendFileSync } from 'fs';
 
 // Analysis debug log file
@@ -28,6 +29,7 @@ function logToAnalysisFile(message: string) {
 
 // Background analysis function
 async function triggerBackgroundAnalysis(exchange: Exchange) {
+	trackAnalysisStarted(exchange.id);
 	try {
 		const startMessage = `🔍 Starting background analysis for exchange ${exchange.id}`;
 		console.log(startMessage);
@@ -85,6 +87,9 @@ async function triggerBackgroundAnalysis(exchange: Exchange) {
 		const errorMessage = `❌ Background analysis failed for exchange ${exchange.id}: ${error}`;
 		console.error(errorMessage);
 		logToAnalysisFile(errorMessage);
+	} finally {
+		// Always mark analysis as finished, whether successful or failed
+		trackAnalysisFinished(exchange.id);
 	}
 }
 

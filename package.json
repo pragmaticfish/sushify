@@ -36,6 +36,7 @@
 	"files": [
 		"build/",
 		"scripts/",
+		"docs/",
 		"README.md",
 		"LICENSE"
 	],
@@ -55,6 +56,7 @@
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"lint": "eslint .",
+		"install-local": "./scripts/install-local.sh",
 		"lint:fix": "eslint . --fix",
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",

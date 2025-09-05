@@ -1,17 +1,17 @@
 import type { PageServerLoad } from './$types';
 import { getExchanges } from '$lib/server/exchanges-store';
-import { checkAnalysisStatus } from '$lib/server/analysis-config';
+import { getAnalysisStatus } from '$lib/server/analysis-config';
 import { getCaptureState } from '$lib/server/capture-state';
 
 export const load: PageServerLoad = async () => {
-	// Check if analysis is enabled
-	const analysisEnabled = checkAnalysisStatus();
+	// Get analysis status (off, cheap, or deep)
+	const analysisStatus = getAnalysisStatus();
 
 	// Load initial exchanges from shared store
 	const initialExchanges = getExchanges(50);
 
 	return {
-		analysisEnabled,
+		analysisStatus,
 		initialExchanges,
 		capturing: getCaptureState()
 	};

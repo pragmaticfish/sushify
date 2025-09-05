@@ -118,6 +118,49 @@ const processes: ProcessManager = {
 	tempComposeFile: null
 };
 
+/**
+ * Wait for all pending analyses to complete
+ */
+async function waitForAnalysesToComplete(): Promise<void> {
+	const maxWaitTime = 120000; // 2 minutes max to support large exchanges analysis by a reasoning model
+	const checkInterval = 3000; // Check every 2 second
+	let elapsed = 0;
+
+	while (elapsed < maxWaitTime) {
+		try {
+			// Check dashboard analysis status endpoint with AbortController for timeout
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+			const response = await fetch(`${getDashboardUrl()}/api/analysis/status`, {
+				signal: controller.signal
+			});
+
+			clearTimeout(timeoutId);
+
+			if (response.ok) {
+				const pendingIds = await response.json();
+
+				if (pendingIds.length === 0) {
+					console.log('✅ All analyses completed');
+					return;
+				}
+
+				console.log(`⏳ Waiting for ${pendingIds.length} pending analysis(es) to complete...`);
+			}
+		} catch {
+			// If we can't reach the server, assume analyses are done
+			console.log('⚠️  Cannot check analysis status, proceeding with shutdown...');
+			return;
+		}
+
+		await new Promise((resolve) => setTimeout(resolve, checkInterval));
+		elapsed += checkInterval;
+	}
+
+	console.log('⏱️  Timeout reached, proceeding with shutdown...');
+}
+
 // Cleanup function
 async function cleanup() {
 	console.log('\n🛑 Shutting down Sushify...');
@@ -468,10 +511,12 @@ function startLocalApp(
 
 	userApp.on('close', (/** @type {number | null} */ code) => {
 		console.log(`\n📋 User application exited with code ${code}`);
-		console.log('⏳ Waiting 2 seconds to ensure all exchanges are captured...');
-		setTimeout(() => {
+		console.log('⏳ Waiting to ensure all exchanges are captured...');
+
+		// Wait for pending analyses to complete before shutting down
+		waitForAnalysesToComplete().then(() => {
 			cleanup();
-		}, 2000);
+		});
 	});
 
 	// Monitor for potential Docker misconfiguration
@@ -669,10 +714,12 @@ services:`;
 			}
 		}
 
-		console.log('⏳ Waiting 2 seconds to ensure all exchanges are captured...');
-		setTimeout(() => {
+		console.log('⏳ Waiting to ensure all exchanges are captured...');
+
+		// Wait for pending analyses to complete before shutting down
+		waitForAnalysesToComplete().then(() => {
 			cleanup();
-		}, 2000);
+		});
 	});
 }
 

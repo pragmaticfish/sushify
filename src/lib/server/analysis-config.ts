@@ -8,11 +8,14 @@ export function checkAnalysisStatus(): boolean {
 	return !!process.env.OPENAI_API_KEY;
 }
 
-// // Get analysis configuration
-// export function getAnalysisConfig() {
-//     return {
-//         enabled: checkAnalysisStatus(),
-//         model: "gpt-4o-mini", // Cheaper model for analysis
-//         maxConcurrentAnalyses: 3 // Limit concurrent analyses
-//     };
-// }
+export function getAnalysisMode(): 'cheap' | 'deep' {
+	return process.env.ANALYSIS_MODE === 'cheap' ? 'cheap' : 'deep';
+}
+
+// This is used by the frontend to display the analysis status
+export function getAnalysisStatus(): 'off' | 'cheap' | 'deep' {
+	if (!checkAnalysisStatus()) {
+		return 'off';
+	}
+	return getAnalysisMode();
+}
