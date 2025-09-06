@@ -39,7 +39,9 @@ This test app includes:
 2. **Run the test** (from project root):
 
    ```bash
-   cd ../../                    # Go to project root
+   cd ../../
+   export ANALYSIS_MODE=cheap # optional
+   nvm use 24                # Go to project root
    npm run test:docker          # Build and run Docker test app
    ```
 
@@ -116,7 +118,7 @@ For full technical details, see [main README](../../README.md) and [test-apps RE
 Edit `docker-compose.yml` to add your own services, then target them with:
 
 ```bash
-../../bin/sushify.js start --docker=your-service "docker compose up"
+../../build/bin/sushify.js start --docker=your-service "docker compose up"
 ```
 
 The Sushify integration works with any language! 🍣✨

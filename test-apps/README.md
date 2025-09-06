@@ -11,21 +11,6 @@ These test apps help you:
 - ✅ **Reproduce issues** and validate fixes
 - ✅ **Understand how Sushify works** under the hood
 
-## 🚀 Quick Start
-
-From the project root, run these convenience scripts to automatically build and test:
-
-```bash
-npm run test:python    # Test simple Python app
-npm run test:docker    # Test Docker Compose app
-```
-
-These scripts automatically:
-
-- ✅ Build Sushify (copies CLI files to `build/` directory)
-- ✅ Navigate to the test app directory
-- ✅ Run the test with proper Sushify configuration
-
 ## Available Test Apps
 
 ### 📁 [`simple-python/`](./simple-python/)
@@ -33,14 +18,14 @@ These scripts automatically:
 - **Type**: Standalone Python application
 - **Use Case**: Testing local application wrapping
 - **Features**: Makes HTTPS API calls to multiple services
-- **Usage**: `../../bin/sushify.js start "python test-app.py"`
+- **Usage**: `../..build/bin/sushify.js start "python test-app.py"`
 
 ### 📁 [`docker-compose/`](./docker-compose/)
 
 - **Type**: Multi-service Docker Compose application
 - **Use Case**: Testing containerized application wrapping
 - **Features**: Node.js backend with external API calls, Nginx frontend, PostgreSQL database
-- **Usage**: `../../bin/sushify.js start --docker=backend "docker compose up"`
+- **Usage**: `../../build/bin/sushify.js start --docker=backend "docker compose up"`
 
 ### 📁 [`open-ai-simple-chat/`](./open-ai-simple-chat/)
 
@@ -48,7 +33,7 @@ These scripts automatically:
 - **Use Case**: Testing OpenAI SDK integration and real-time LLM calls
 - **Features**: Interactive web chat, OpenAI API calls, WebSocket communication
 - **Requirements**: Node.js v23+, `OPENAI_API_KEY` environment variable
-- **Usage**: `../../bin/sushify.js start "npm start"`
+- **Usage**: `../../build/bin/sushify.js start "npm start"`
 
 ## Quick Start for Development
 

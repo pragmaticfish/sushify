@@ -29,11 +29,14 @@ nvm use  # Uses .nvmrc file (Node.js v24)
 # Install dependencies
 npm install
 
+# Build
+npm run build
+
 # Set your OpenAI API key
 export OPENAI_API_KEY="your-openai-api-key-here"
 
 # Run with Sushify (using relative path to development build)
-../../bin/sushify.js start "npm start"
+../../build/bin/sushify.js start "npm start"
 ```
 
 ## 🌐 Usage
