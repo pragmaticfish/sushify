@@ -9,7 +9,10 @@ It supports any app (including dockerized) that can be proxied, regardless of pr
 
 **You can set it up in ~5 minutes**.
 
+> Watch a [quick demo](https://www.loom.com/share/57545cbf7f014321ae92a9ebeeacb929?sid=3d831c31-856c-4c1a-90c7-75af42a8d5f0)
+
 ![Sushify dashboard](https://github.com/user-attachments/assets/6e71f4c2-a279-4465-bb89-3562de392804)
+
 ![Sushify analysis](https://github.com/user-attachments/assets/ee40a19e-50fc-466b-9c5a-a00f5c230713)
 
 ## Who? When? Why? How?

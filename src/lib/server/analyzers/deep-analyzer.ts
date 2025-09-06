@@ -208,12 +208,14 @@ export async function deepAnalyzeLLMExchange(
 	conversation: string
 ): Promise<z.infer<typeof analysisOutputSchema>> {
 	const analysisPromises = analysisCategories.map(async (category) => {
-		const prompt = getAnalysisCategoryPrompt(category);
+		const categoryInstructions = getAnalysisCategoryPrompt(category);
+		// Notice the prompt is structured to maximize the LLM cache hit rate by putting the conversation at the end of the prompt.
+		// The first exchange makes all the calls in parallel so we can't hope for cache hits but the next ones will benefit from it.
 		return {
 			category,
 			analysis: await callModel({
 				input: [
-					{ role: 'system', content: `${deepAnalysisSystemPrompt}\n---\n${prompt}` },
+					{ role: 'system', content: `${deepAnalysisSystemPrompt}\n---\n${categoryInstructions}` },
 					{
 						role: 'user',
 						content: `Please analyze this LLM exchange for prompt engineering issues:\n\n${conversation}`
