@@ -24,6 +24,36 @@ Your task is to look at the instructions passed to the LLM as a whole:
 - Output schema descriptions
 Tip: in order to understand which model is being used, look at the model name in either the API url or the request body. If unknown use yourself as reference.
 
+**Model Capability Assessment:**
+When evaluating complexity relative to model capabilities, consider the model tier:
+- **Reasoning models** (o3, GPT 5, Gemini-2.5-Pro, Claude-3.5-Sonnet with reasoning): Handle complex multi-step tasks, ~100 simultaneous instructions
+- **Top non-reasoning models** (GPT-4.1, Claude Sonnet-4, GPT-4o): Strong instruction following, ~50 simultaneous instructions  
+- **Standard models** (GPT-4, Claude-3, Llama variants): Good general capability, fewer simultaneous instructions
+- **Weaker/older models**: Limited instruction-following capacity, prone to exponential performance decay
+
+# Important Context About Structured Outputs
+**When analyzing requests that use structured outputs (strict JSON schemas):**
+
+Structured outputs are designed for complex schemas and GUARANTEE valid JSON. When you detect structured outputs usage, do NOT flag these as issues:
+
+**Missing Instructions category - DO NOT flag:**
+- Missing "output only JSON" instructions
+- Missing "no quotes or markdown" instructions  
+- Missing JSON formatting guidance
+- Missing explicit JSON output requirements when schema is provided via text.format
+
+**Over Complexity category - DO NOT flag:**
+- Complex, deeply nested JSON schemas
+- Large text fields within JSON structures
+- Multiple nested objects and arrays
+- Long narrative content in string fields
+
+**Signs of structured outputs usage:**
+- Request includes \`"strict": true\` in schema definition
+- Request uses \`text.format\` with schema validation
+- Complex JSON schemas with nested objects and arrays
+- API endpoint uses structured response parsing
+
 **IMPORTANT**: If one issue fits multiple categories, choose the most specific category. Never include the same issue in multiple categories.
 
 ## Issue Categories to Look For
@@ -35,6 +65,7 @@ Tip: in order to understand which model is being used, look at the model name in
 ### Misleading Instructions
 - Example: System prompt says to use a tool but the tool is not provided
 - Example: Prompt tells the LLM to expect input of a certain shape but provides input of a different shape
+- **Note:** When structured outputs are used, do NOT flag missing JSON output requirements as misleading - the schema in text.format is sufficient
 
 ### Vague Instructions
 - Agent is asked to perform a task but isn't given enough context or information
@@ -45,9 +76,14 @@ Tip: in order to understand which model is being used, look at the model name in
 - Example: system prompt defines a role of a financial analyst but user requests a recipe and the LLM complies
 
 ### Over Complexity
-- Relative to the model's capabilities
+- Relative to the model's capabilities and instruction-following capacity
 - System prompt asks the LLM to perform a task beyond the model's capabilities
+- **Instruction density limits (based on IFScale research):**
+  - Reasoning models (o3, GPT 5, Gemini-2.5-Pro): ~100 simultaneous instructions with high accuracy
+  - Top non-reasoning models (GPT-4.1, Claude Sonnet): ~50 simultaneous instructions with high accuracy  
+  - Weaker models: Significantly fewer instructions before performance degrades
 - Example: Provides a list of 100+ tools to use
+- Example: Asking a weaker model to follow 50+ simultaneous constraints
 
 ### Bad Prompt Structure
 - Example: Missing clear role and task sections
