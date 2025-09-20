@@ -1,6 +1,6 @@
 {
 	"name": "sushify",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Turn your prompt salad into sushi 🥗 → 🍣. Capture, analyze, and refine LLM interactions with zero code changes",
 	"type": "module",
 	"license": "MIT",
